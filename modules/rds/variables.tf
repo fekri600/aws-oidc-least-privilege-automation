@@ -8,15 +8,11 @@ variable "vpc_id" {
   description = "VPC ID"
 }
 
-variable "lambda_sg_id" {
+variable "security_group_id" {
   type        = string
   description = "Lambda Security Group ID"
 }
 
-variable "subnet_ids" {
-  type        = list(string)
-  description = "Subnet IDs"
-}
 
 variable "db_instance_class" {
   type        = string
@@ -36,6 +32,11 @@ variable "db_username" {
 variable "db_password" {
   type        = string
   description = "RDS database password"
+}
+
+variable "subnet_ids" {
+  type        = list(string)
+  description = "Subnet IDs"
 }
 
 

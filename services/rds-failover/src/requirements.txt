@@ -1,0 +1,2 @@
+# Leave empty maybe we need to add some libs.
+# boto3/botocore are provided by the Lambda runtime.

@@ -1,0 +1,59 @@
+name: build-lambda-artifacts
+on:
+  push:
+    paths:
+      - "services/rds-snapshot/**"
+      - "services/rds-failover/**"
+      - ".github/workflows/build-lambda-artifacts.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write    # OIDC
+      contents: read
+    env:
+      ARTIFACTS_BUCKET: your-artifacts-bucket-name
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip rds-snapshot
+        run: |
+          cd services/rds-snapshot/src
+          zip -r ../../../rds-snapshot.zip .
+
+      - name: Zip rds-failover
+        run: |
+          cd services/rds-failover/src
+          zip -r ../../../rds-failover.zip .
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Upload artifacts to S3
+        run: |
+          aws s3 cp rds-snapshot.zip s3://$ARTIFACTS_BUCKET/lambda/rds-snapshot/rds-snapshot-1.0.0.zip
+          aws s3 cp rds-failover.zip s3://$ARTIFACTS_BUCKET/lambda/rds-failover/rds-failover-1.0.0.zip
+
+      - name: Compute base64(sha256) hashes
+        id: hash
+        run: |
+          SNAP=$(openssl dgst -sha256 -binary rds-snapshot.zip | openssl base64 -A)
+          FAIL=$(openssl dgst -sha256 -binary rds-failover.zip | openssl base64 -A)
+          echo "snapshot_hash=$SNAP" >> $GITHUB_OUTPUT
+          echo "failover_hash=$FAIL" >> $GITHUB_OUTPUT
+
+      - name: Write tfvars with hashes
+        run: |
+          cat > terraform.auto.tfvars <<EOF
+          snapshot_code_hash = "${{ steps.hash.outputs.snapshot_hash }}"
+          failover_code_hash = "${{ steps.hash.outputs.failover_hash }}"
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lambda-hashes
+          path: terraform.auto.tfvars

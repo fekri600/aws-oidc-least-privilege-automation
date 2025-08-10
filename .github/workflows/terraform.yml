@@ -1,0 +1,81 @@
+name: terraform
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch: {}   # manual run for apply
+  push:
+    branches: ["main"]
+    paths:
+      - "terraform/**"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pull the latest hashes produced by the artifacts workflow
+      - uses: actions/download-artifact@v4
+        with:
+          name: lambda-hashes
+          path: .
+        continue-on-error: true  # first run may not have artifacts yet
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Set Terraform working dir
+        run: echo "TFDIR=terraform" >> $GITHUB_ENV
+
+      - name: fmt & validate
+        run: |
+          terraform -chdir=$TFDIR fmt -check -recursive
+          terraform -chdir=$TFDIR init -input=false
+          terraform -chdir=$TFDIR validate
+
+      # Optional: linters/scanners
+      # - run: tflint ...
+      # - run: checkov ...
+
+      - name: Plan
+        run: terraform -chdir=$TFDIR plan -out=tfplan.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan.bin
+
+  apply:
+    needs: plan
+    if: github.event_name == 'workflow_dispatch'   # manual trigger only
+    runs-on: ubuntu-latest
+    # environment:
+      # name: prod
+      # (Optionally require reviewers on the "prod" environment for manual approval)
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Init (safe)
+        run: terraform -chdir=terraform init -input=false
+
+      - name: Apply saved plan
+        run: terraform -chdir=terraform apply -auto-approve tfplan.bin

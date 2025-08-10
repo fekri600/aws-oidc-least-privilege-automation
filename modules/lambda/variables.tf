@@ -8,10 +8,6 @@ variable "vpc_id" {
   description = "VPC ID"
 }
 
-variable "input_security_group_id" {
-  type        = string
-  description = "Input security group ID"
-}
 variable "private_subnet_ids" {
   type        = list(string)
   description = "Private subnet IDs"
@@ -37,3 +33,7 @@ variable "role_arn" {
   description = "Lambda role ARN"
 }
 
+variable "security_group_id" {
+  type        = string
+  description = "Security group ID"
+}

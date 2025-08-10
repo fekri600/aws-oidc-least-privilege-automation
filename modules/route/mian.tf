@@ -1,5 +1,5 @@
 resource "aws_route_table" "this" {
-  vpc_id = aws_vpc.this.id
+  vpc_id = var.vpc_id
   tags   = { Name = "${var.name}-public-rt" }
 }
 

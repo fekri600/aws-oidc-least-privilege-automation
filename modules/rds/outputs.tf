@@ -8,3 +8,7 @@ output "rds_endpoint" {
   description = "RDS instance endpoint"
 }
 
+output "db_subnet_group_name" {
+  value       = aws_db_subnet_group.this.name
+  description = "RDS subnet group name"
+}
