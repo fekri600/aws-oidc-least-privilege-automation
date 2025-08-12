@@ -10,7 +10,7 @@ resource "aws_db_instance" "this" {
   deletion_protection = false
   multi_az            = true
 
-  db_subnet_group_name   = aws_db_subnet_group.this.name
+  db_subnet_group_name   = var.db_subnet_group
   vpc_security_group_ids = [var.security_group_id]
 
   # Backup retention for snapshot creation

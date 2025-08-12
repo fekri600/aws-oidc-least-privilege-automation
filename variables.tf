@@ -49,3 +49,28 @@ variable "db_instance_class" {
   description = "DB instance class"
 }
 
+variable "zone_name" {
+  type        = string
+  description = "Zone name"
+}
+
+variable "rds_snapshot_code_hash" {
+  type        = string
+  description = "RDS snapshot code hash"
+}
+
+variable "rds_failover_code_hash" {
+  type        = string
+  description = "RDS failover code hash"
+}
+
+variable "rds_snapshot_s3_key" {
+  type        = string
+  description = "RDS snapshot S3 key"
+}
+
+variable "rds_failover_s3_key" {
+  type        = string
+  description = "RDS failover S3 key"
+} 
+

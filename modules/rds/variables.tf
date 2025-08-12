@@ -34,10 +34,9 @@ variable "db_password" {
   description = "RDS database password"
 }
 
-variable "subnet_ids" {
-  type        = list(string)
-  description = "Subnet IDs"
+
+variable "db_subnet_group" {
+  type        = string
+  description = "RDS database subnet group"
 }
-
-
 

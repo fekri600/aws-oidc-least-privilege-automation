@@ -1,4 +1,4 @@
-variable "name"                   { type = string }
+variable "name" { type = string }
 variable "enable_versioning" {
   type    = bool
   default = true
@@ -9,11 +9,11 @@ variable "force_destroy" {
 }
 variable "kms_key_arn" {
   type    = string
-  default = null  # use AES256 if null
+  default = null # use AES256 if null
 }
 variable "enable_bucket_key" {
   type    = bool
-  default = true  # S3 Bucket Keys w/ KMS
+  default = true # S3 Bucket Keys w/ KMS
 }
 variable "lifecycle_enabled" {
   type    = bool

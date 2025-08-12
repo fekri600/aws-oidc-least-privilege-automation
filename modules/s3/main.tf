@@ -43,15 +43,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   rule {
     id     = "expire-old-versions"
     status = "Enabled"
+    filter { prefix = var.artifacts_prefix}
     noncurrent_version_expiration { noncurrent_days = var.noncurrent_expire_days }
   }
 }
 
-resource "aws_s3_bucket_policy" "this" {
-  bucket = aws_s3_bucket.this.id
-  policy = templatefile("${path.module}/policies/artifacts-bucket-policy.json", {
-    bucket_arn      = aws_s3_bucket.this.arn
-    ci_role_arn     = var.ci_role_arn
-    artifacts_prefix = var.artifacts_prefix
-  })
-}
+

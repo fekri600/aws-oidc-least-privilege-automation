@@ -1,5 +1,5 @@
 data "external" "ipam_vpc" {
-  program = ["python3", "${abspath(path.module)}/ipam_provider.py"]  
+  program = ["python3", "${abspath(path.module)}/ipam_provider.py"]
 
   query = {
     resource_type = "vpc"

@@ -11,4 +11,3 @@ variable "vpc_id" {
 variable "cidr_block" { type = string }
 variable "availability_zone" { type = string }
 variable "map_public_ip_on_launch" { type = bool }
-variable "route_table_id" { type = string } 

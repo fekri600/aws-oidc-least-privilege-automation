@@ -1,3 +1,4 @@
+# .github/workflows/build-lambda-artifacts.yml
 name: build-lambda-artifacts
 on:
   push:
@@ -7,13 +8,46 @@ on:
       - ".github/workflows/build-lambda-artifacts.yml"
 
 jobs:
-  build:
+  storage:
+    name: Ensure artifacts bucket exists
     runs-on: ubuntu-latest
     permissions:
-      id-token: write    # OIDC
+      id-token: write
       contents: read
     env:
-      ARTIFACTS_BUCKET: your-artifacts-bucket-name
+      AWS_REGION: us-east-1
+    outputs:
+      bucket: ${{ steps.out.outputs.bucket }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init/plan/apply (storage)
+        run: |
+          terraform -chdir=env/shared/global/storage init -upgrade
+          terraform -chdir=env/shared/global/storage apply -auto-approve
+
+      - name: Read bucket name from TF outputs
+        id: out
+        run: |
+          BKT=$(terraform -chdir=env/shared/global/storage output -raw artifacts_bucket_name)
+          echo "bucket=$BKT" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build and upload Lambda artifacts
+    needs: storage
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: us-east-1
+      ARTIFACTS_BUCKET: ${{ needs.storage.outputs.bucket }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,29 +65,34 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Upload artifacts to S3
+      - name: Upload artifacts to S3 (unique keys per commit)
         run: |
-          aws s3 cp rds-snapshot.zip s3://$ARTIFACTS_BUCKET/lambda/rds-snapshot/rds-snapshot-1.0.0.zip
-          aws s3 cp rds-failover.zip s3://$ARTIFACTS_BUCKET/lambda/rds-failover/rds-failover-1.0.0.zip
+          set -euo pipefail
+          aws s3 cp rds-snapshot.zip s3://$ARTIFACTS_BUCKET/lambda/rds-snapshot/${GITHUB_SHA}.zip
+          aws s3 cp rds-failover.zip  s3://$ARTIFACTS_BUCKET/lambda/rds-failover/${GITHUB_SHA}.zip
 
       - name: Compute base64(sha256) hashes
         id: hash
         run: |
+          set -euo pipefail
           SNAP=$(openssl dgst -sha256 -binary rds-snapshot.zip | openssl base64 -A)
-          FAIL=$(openssl dgst -sha256 -binary rds-failover.zip | openssl base64 -A)
+          FAIL=$(openssl dgst -sha256 -binary rds-failover.zip  | openssl base64 -A)
           echo "snapshot_hash=$SNAP" >> $GITHUB_OUTPUT
           echo "failover_hash=$FAIL" >> $GITHUB_OUTPUT
 
-      - name: Write tfvars with hashes
+      - name: Write terraform.auto.tfvars
         run: |
           cat > terraform.auto.tfvars <<EOF
-          snapshot_code_hash = "${{ steps.hash.outputs.snapshot_hash }}"
-          failover_code_hash = "${{ steps.hash.outputs.failover_hash }}"
+          artifacts_bucket_name   = "${ARTIFACTS_BUCKET}"
+          rds_snapshot_s3_key     = "lambda/rds-snapshot/${GITHUB_SHA}.zip"
+          rds_failover_s3_key     = "lambda/rds-failover/${GITHUB_SHA}.zip"
+          rds_snapshot_code_hash  = "${{ steps.hash.outputs.snapshot_hash }}"
+          rds_failover_code_hash  = "${{ steps.hash.outputs.failover_hash }}"
           EOF
 
       - uses: actions/upload-artifact@v4
         with:
-          name: lambda-hashes
+          name: lambda-artifacts-tfvars
           path: terraform.auto.tfvars

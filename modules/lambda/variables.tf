@@ -3,15 +3,6 @@ variable "function_name" {
   description = "Lambda function name"
 }
 
-variable "vpc_id" {
-  type        = string
-  description = "VPC ID"
-}
-
-variable "private_subnet_ids" {
-  type        = list(string)
-  description = "Private subnet IDs"
-}
 variable "handler" {
   type        = string
   description = "Lambda handler"
@@ -20,10 +11,7 @@ variable "runtime" {
   type        = string
   description = "Lambda runtime"
 }
-variable "zip_file" {
-  type        = string
-  description = "Lambda zip file"
-}
+
 variable "environment_variables" {
   type        = map(string)
   description = "Lambda environment variables"
@@ -33,7 +21,20 @@ variable "role_arn" {
   description = "Lambda role ARN"
 }
 
-variable "security_group_id" {
+variable "s3_bucket" {
   type        = string
-  description = "Security group ID"
+  description = "S3 bucket name"
 }
+
+variable "s3_key" {
+  type        = string
+  description = "S3 key"
+}
+
+variable "source_code_hash" {
+  type        = string
+  description = "Source code hash"
+}
+
+
+

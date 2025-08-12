@@ -9,23 +9,23 @@ variable "vpc_id" {
 }
 
 variable "ingress_rules" {
-  type        = list(object({
-    from_port = number
-    to_port = number
-    protocol = string
+  type = list(object({
+    from_port    = number
+    to_port      = number
+    protocol     = string
     source_sg_id = string
-    cidr_blocks = list(string)
+    cidr_blocks  = list(string)
   }))
   description = "List of ingress rules"
 }
 
 variable "egress_rules" {
-  type        = list(object({
-    from_port = number
-    to_port = number
-    protocol = string
+  type = list(object({
+    from_port    = number
+    to_port      = number
+    protocol     = string
     source_sg_id = string
-    cidr_blocks = list(string)
+    cidr_blocks  = list(string)
   }))
   description = "List of egress rules"
 }

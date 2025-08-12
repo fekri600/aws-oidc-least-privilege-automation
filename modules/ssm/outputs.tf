@@ -1,10 +1,10 @@
 
 
-output "active_endpoint_path" {
+output "active_endpoint_name" {
   value = aws_ssm_parameter.db_active_endpoint.name
 }
 
-output "primary_endpoint_path" {
+output "primary_endpoint_name" {
   value = aws_ssm_parameter.db_primary_endpoint.name
 }
 
