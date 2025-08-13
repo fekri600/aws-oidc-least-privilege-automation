@@ -4,7 +4,7 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
-
+  workflow_dispatch: {}
 
 jobs:
   storage:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.9.5 }
+        with: { terraform_version: 1.12.2 }
 
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,7 +80,7 @@ jobs:
           echo "snapshot_hash=$SNAP" >> $GITHUB_OUTPUT
           echo "failover_hash=$FAIL" >> $GITHUB_OUTPUT
 
-      - name: Emit terraform.auto.tfvars for downstream workflow
+      - name: Emit terraform.auto.tfvars
         run: |
           cat > terraform.auto.tfvars <<EOF
           artifacts_bucket_name   = "${ARTIFACTS_BUCKET}"

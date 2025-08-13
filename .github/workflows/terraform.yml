@@ -1,30 +1,43 @@
 name: terraform
+
 on:
-  pull_request:
-    paths:
-      - "terraform/**"
-      - ".github/workflows/terraform.yml"
-  push:
-    paths:
-      - "terraform/**"
+  # Auto-plan immediately after build-lambda-artifacts succeeds
+  workflow_run:
+    workflows: ["build-lambda-artifacts"]
+    types: [completed]
+
+  # Manual deploy
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: "Commit SHA to deploy (defaults to the SHA of the latest push to the current branch)"
+        description: "Commit SHA to deploy (defaults to the latest commit on the default branch)"
         required: false
         type: string
 
 jobs:
   plan:
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    permissions: { id-token: write, contents: read }
+    permissions:
+      id-token: write
+      contents: read
+      actions: read   # to read artifacts from the build run
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo at triggering SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.9.5 }
 
-      # If backend or data sources need AWS, keep OIDC for plan:
+      - name: Download lambda tfvars from build workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-artifacts-tfvars
+          path: terraform
+          run-id: ${{ github.event.workflow_run.id }}
+
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -45,12 +58,12 @@ jobs:
           path: terraform/tfplan.bin
 
   deploy:
-    if: github.event_name == 'workflow_dispatch'   # manual only
+    if: github.event_name == 'workflow_dispatch'   # MANUAL ONLY
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-      actions: read     # needed to read artifacts from other runs
+      actions: read
     env:
       AWS_REGION: us-east-1
     steps:
@@ -58,7 +71,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.9.5 }
 
-      # 1) Resolve which commit SHA to deploy (input or latest on the ref)
+      # Resolve commit to deploy
       - name: Resolve commit SHA
         id: sha
         run: |
@@ -68,14 +81,13 @@ jobs:
             echo "value=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
 
-      # 2) Find latest successful run of build-lambda-artifacts for that SHA
-      - name: Find successful build run for this commit
+      # Find the latest successful build-lambda-artifacts run for that SHA
+      - name: Find successful build run
         id: find_run
         uses: actions/github-script@v7
         with:
           script: |
-            const commitSha = core.getInput('commit_sha_resolved') || '${{ steps.sha.outputs.value }}';
-            // List runs for the named workflow
+            const commitSha = '${{ steps.sha.outputs.value }}';
             const { data } = await github.rest.actions.listWorkflowRuns({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -85,13 +97,9 @@ jobs:
             const run = data.workflow_runs.find(r =>
               r.head_sha === commitSha && r.conclusion === 'success'
             );
-            if (!run) core.setFailed(`No successful build-lambda-artifacts run found for SHA ${commitSha}`);
-            core.setOutput('run_id', run.id.toString());
-          result-encoding: string
-          with:
-            commit_sha_resolved: ${{ steps.sha.outputs.value }}
+            if (!run) core.setFailed(`No successful build-lambda-artifacts run found for ${commitSha}`);
+            core.setOutput('run_id', String(run.id));
 
-      # 3) Download the tfvars from that build run
       - name: Download lambda tfvars
         uses: actions/download-artifact@v4
         with:
@@ -99,10 +107,6 @@ jobs:
           path: terraform
           run-id: ${{ steps.find_run.outputs.run_id }}
 
-      - name: Show tfvars (debug)
-        run: cat terraform/terraform.auto.tfvars
-
-      # 4) Configure AWS and deploy
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -110,11 +114,9 @@ jobs:
           role-session-name: gha-tf-apply
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Init, validate, plan
+      - name: Init, validate, plan, apply
         run: |
           terraform -chdir=terraform init -input=false
           terraform -chdir=terraform validate
           terraform -chdir=terraform plan -out=tfplan.bin
-
-      - name: Apply
-        run: terraform -chdir=terraform apply -auto-approve tfplan.bin
+          terraform -chdir=terraform apply -auto-approve tfplan.bin

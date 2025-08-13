@@ -2,16 +2,16 @@
 
 module "artifacts_bucket" {
   source            = "../../../../modules/s3"
-  name              = "${var.name_prefix}-lfn-artf-bkt"
-  enable_versioning = true
-  force_destroy     = false
+  name              = "i2508dr-prod-glb-lfn-artf-bkt"
+  enable_versioning = false
+  force_destroy     = true
   kms_key_arn       = null # or leave null for AES256
 
   artifacts_prefix = "lambda/"
-  ci_role_arn      = var.ci_role_arn
+  ci_role_arn      = data.aws_ssm_parameter.github_trust_role_arn.value
   tags = {
-    app         = var.name_prefix
-    environment = var.environment
+    app         = "i2508dr-prod-glb"
+    environment = "prod"
     purpose     = "lambda-artifacts"
   }
 }
