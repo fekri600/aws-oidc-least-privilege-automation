@@ -1,50 +1,47 @@
-# .github/workflows/build-lambda-artifacts.yml
 name: build-lambda-artifacts
 on:
   push:
-    paths:
-      - "services/rds-snapshot/**"
-      - "services/rds-failover/**"
-      - ".github/workflows/build-lambda-artifacts.yml"
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
 
 jobs:
   storage:
-    name: Ensure artifacts bucket exists
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    env:
-      AWS_REGION: us-east-1
+    permissions: { id-token: write, contents: read }
+    env: { AWS_REGION: us-east-1 }
     outputs:
       bucket: ${{ steps.out.outputs.bucket }}
     steps:
       - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.5 }
 
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-artifacts
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform init/plan/apply (storage)
+      - name: Terraform init/apply (storage)
         run: |
-          terraform -chdir=env/shared/global/storage init -upgrade
+          terraform -chdir=env/shared/global/storage init -upgrade -input=false
           terraform -chdir=env/shared/global/storage apply -auto-approve
 
-      - name: Read bucket name from TF outputs
+      - name: Read bucket name
         id: out
         run: |
-          BKT=$(terraform -chdir=env/shared/global/storage output -raw artifacts_bucket_name)
+          set -euo pipefail
+          BKT=$(terraform -chdir=env/shared/global/storage output -raw artifacts_bucket_name || true)
+          test -n "$BKT" || { echo "Empty artifacts_bucket_name"; exit 1; }
           echo "bucket=$BKT" >> "$GITHUB_OUTPUT"
 
   build:
-    name: Build and upload Lambda artifacts
     needs: storage
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+    permissions: { id-token: write, contents: read }
     env:
       AWS_REGION: us-east-1
       ARTIFACTS_BUCKET: ${{ needs.storage.outputs.bucket }}
@@ -65,6 +62,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-artifacts
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Upload artifacts to S3 (unique keys per commit)
@@ -82,7 +80,7 @@ jobs:
           echo "snapshot_hash=$SNAP" >> $GITHUB_OUTPUT
           echo "failover_hash=$FAIL" >> $GITHUB_OUTPUT
 
-      - name: Write terraform.auto.tfvars
+      - name: Emit terraform.auto.tfvars for downstream workflow
         run: |
           cat > terraform.auto.tfvars <<EOF
           artifacts_bucket_name   = "${ARTIFACTS_BUCKET}"

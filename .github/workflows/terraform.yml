@@ -4,78 +4,117 @@ on:
     paths:
       - "terraform/**"
       - ".github/workflows/terraform.yml"
-  workflow_dispatch: {}   # manual run for apply
   push:
-    branches: ["main"]
     paths:
       - "terraform/**"
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA to deploy (defaults to the SHA of the latest push to the current branch)"
+        required: false
+        type: string
 
 jobs:
   plan:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+    permissions: { id-token: write, contents: read }
     steps:
       - uses: actions/checkout@v4
-
-      # Pull the latest hashes produced by the artifacts workflow
-      - uses: actions/download-artifact@v4
-        with:
-          name: lambda-hashes
-          path: .
-        continue-on-error: true  # first run may not have artifacts yet
-
       - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.5 }
 
-      - name: Set Terraform working dir
-        run: echo "TFDIR=terraform" >> $GITHUB_ENV
+      # If backend or data sources need AWS, keep OIDC for plan:
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-tf-plan
+          aws-region: us-east-1
 
-      - name: fmt & validate
+      - name: fmt, validate, plan
         run: |
-          terraform -chdir=$TFDIR fmt -check -recursive
-          terraform -chdir=$TFDIR init -input=false
-          terraform -chdir=$TFDIR validate
-
-      # Optional: linters/scanners
-      # - run: tflint ...
-      # - run: checkov ...
-
-      - name: Plan
-        run: terraform -chdir=$TFDIR plan -out=tfplan.bin
+          terraform -chdir=terraform fmt -check -recursive
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform validate
+          terraform -chdir=terraform plan -out=tfplan.bin
 
       - uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: terraform/tfplan.bin
 
-  apply:
-    needs: plan
-    if: github.event_name == 'workflow_dispatch'   # manual trigger only
+  deploy:
+    if: github.event_name == 'workflow_dispatch'   # manual only
     runs-on: ubuntu-latest
-    # environment:
-      # name: prod
-      # (Optionally require reviewers on the "prod" environment for manual approval)
     permissions:
       id-token: write
       contents: read
+      actions: read     # needed to read artifacts from other runs
+    env:
+      AWS_REGION: us-east-1
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: terraform
-
       - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.5 }
 
+      # 1) Resolve which commit SHA to deploy (input or latest on the ref)
+      - name: Resolve commit SHA
+        id: sha
+        run: |
+          if [ -n "${{ inputs.commit_sha }}" ]; then
+            echo "value=${{ inputs.commit_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 2) Find latest successful run of build-lambda-artifacts for that SHA
+      - name: Find successful build run for this commit
+        id: find_run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commitSha = core.getInput('commit_sha_resolved') || '${{ steps.sha.outputs.value }}';
+            // List runs for the named workflow
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-lambda-artifacts.yml',
+              per_page: 50
+            });
+            const run = data.workflow_runs.find(r =>
+              r.head_sha === commitSha && r.conclusion === 'success'
+            );
+            if (!run) core.setFailed(`No successful build-lambda-artifacts run found for SHA ${commitSha}`);
+            core.setOutput('run_id', run.id.toString());
+          result-encoding: string
+          with:
+            commit_sha_resolved: ${{ steps.sha.outputs.value }}
+
+      # 3) Download the tfvars from that build run
+      - name: Download lambda tfvars
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-artifacts-tfvars
+          path: terraform
+          run-id: ${{ steps.find_run.outputs.run_id }}
+
+      - name: Show tfvars (debug)
+        run: cat terraform/terraform.auto.tfvars
+
+      # 4) Configure AWS and deploy
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          aws-region: us-east-1
+          role-session-name: gha-tf-apply
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Init (safe)
-        run: terraform -chdir=terraform init -input=false
+      - name: Init, validate, plan
+        run: |
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform validate
+          terraform -chdir=terraform plan -out=tfplan.bin
 
-      - name: Apply saved plan
+      - name: Apply
         run: terraform -chdir=terraform apply -auto-approve tfplan.bin
