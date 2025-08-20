@@ -80,17 +80,11 @@ jobs:
           echo "snapshot_hash=$SNAP" >> $GITHUB_OUTPUT
           echo "failover_hash=$FAIL" >> $GITHUB_OUTPUT
 
-      - name: Emit terraform.auto.tfvars
+      - name: Save Lambda artifact info to SSM
         run: |
-          cat > terraform.auto.tfvars <<EOF
-          artifacts_bucket_name   = "${ARTIFACTS_BUCKET}"
-          rds_snapshot_s3_key     = "lambda/rds-snapshot/${GITHUB_SHA}.zip"
-          rds_failover_s3_key     = "lambda/rds-failover/${GITHUB_SHA}.zip"
-          rds_snapshot_code_hash  = "${{ steps.hash.outputs.snapshot_hash }}"
-          rds_failover_code_hash  = "${{ steps.hash.outputs.failover_hash }}"
-          EOF
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: lambda-artifacts-tfvars
-          path: terraform.auto.tfvars
+          set -euo pipefail
+          aws ssm put-parameter --name "/i2508dr/ci/artifacts_bucket_name"  --type String --value "$ARTIFACTS_BUCKET" --overwrite
+          aws ssm put-parameter --name "/i2508dr/ci/rds_snapshot_s3_key"    --type String --value "lambda/rds-snapshot/${GITHUB_SHA}.zip" --overwrite
+          aws ssm put-parameter --name "/i2508dr/ci/rds_failover_s3_key"    --type String --value "lambda/rds-failover/${GITHUB_SHA}.zip" --overwrite
+          aws ssm put-parameter --name "/i2508dr/ci/rds_snapshot_code_hash" --type String --value "${{ steps.hash.outputs.snapshot_hash }}" --overwrite
+          aws ssm put-parameter --name "/i2508dr/ci/rds_failover_code_hash" --type String --value "${{ steps.hash.outputs.failover_hash }}" --overwrite

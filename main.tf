@@ -13,11 +13,11 @@ module "prod_compute_1st" {
   active_endpoint_name     = module.prod_database_1st.db_active_endpoint
   db_dns_record_name       = module.prod_database_1st.db_dns_record_name
   sns_topic_arn            = module.sns.sns_topic_arn
-  artifacts_bucket_name    = module.storage.artifacts_bucket_name
-  rds_snapshot_code_hash   = var.rds_snapshot_code_hash
-  rds_failover_code_hash   = var.rds_failover_code_hash
-  rds_snapshot_s3_key      = var.rds_snapshot_s3_key
-  rds_failover_s3_key      = var.rds_failover_s3_key  
+  artifacts_bucket_name    = module.ssm.artifacts_bucket_name
+  rds_snapshot_code_hash   = module.ssm.rds_snapshot_code_hash
+  rds_failover_code_hash   = module.ssm.rds_failover_code_hash
+  rds_snapshot_s3_key      = module.ssm.rds_snapshot_s3_key
+  rds_failover_s3_key      = module.ssm.rds_failover_s3_key  
 }
 
 module "prod_database_1st" {
@@ -59,15 +59,6 @@ module "prod_networking_2nd" {
   providers = {
     aws = aws.secondary
   }
-}
-
-
-module "storage" {
-  source           = "./env/shared/global/storage"
-  name_prefix      = local.name_prefix.prod_glb
-  environment      = "prod"
-  ci_role_arn      = module.ssm.ci_role_arn
-  artifacts_prefix = "lambda/"
 }
 
 module "ssm" {

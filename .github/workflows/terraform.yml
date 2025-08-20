@@ -6,22 +6,30 @@ on:
     workflows: ["build-lambda-artifacts"]
     types: [completed]
 
-  # Manual deploy
+  # Manual run: choose Deploy or Destroy
   workflow_dispatch:
     inputs:
+      action:
+        description: "What do you want to do?"
+        type: choice
+        options: ["deploy", "destroy"]
+        default: "deploy"
+        required: true
       commit_sha:
-        description: "Commit SHA to deploy (defaults to the latest commit on the default branch)"
+        description: "Commit SHA to use (defaults to current)"
+        required: false
+        type: string
+      destroy_confirm:
+        description: "Type EXACTLY: DESTROY (only required for destroy)"
         required: false
         type: string
 
 jobs:
+  # Auto-plan when build workflow completes successfully
   plan:
     if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      actions: read   # to read artifacts from the build run
+    permissions: { id-token: write, contents: read, actions: read }
     steps:
       - name: Checkout repo at triggering SHA
         uses: actions/checkout@v4
@@ -29,7 +37,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.9.5 }
+        with: { terraform_version: 1.12.2 }
 
       - name: Download lambda tfvars from build workflow
         uses: actions/download-artifact@v4
@@ -57,21 +65,17 @@ jobs:
           name: tfplan
           path: terraform/tfplan.bin
 
+  # Manual DEPLOY
   deploy:
-    if: github.event_name == 'workflow_dispatch'   # MANUAL ONLY
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      actions: read
-    env:
-      AWS_REGION: us-east-1
+    permissions: { id-token: write, contents: read, actions: read }
+    env: { AWS_REGION: us-east-1 }
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.9.5 }
+        with: { terraform_version: 1.12.2 }
 
-      # Resolve commit to deploy
       - name: Resolve commit SHA
         id: sha
         run: |
@@ -81,7 +85,6 @@ jobs:
             echo "value=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
 
-      # Find the latest successful build-lambda-artifacts run for that SHA
       - name: Find successful build run
         id: find_run
         uses: actions/github-script@v7
@@ -120,3 +123,61 @@ jobs:
           terraform -chdir=terraform validate
           terraform -chdir=terraform plan -out=tfplan.bin
           terraform -chdir=terraform apply -auto-approve tfplan.bin
+
+  # Manual DESTROY
+  destroy:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' && inputs.destroy_confirm == 'DESTROY'
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read, actions: read }
+    env: { AWS_REGION: us-east-1 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.12.2 }
+
+      - name: Resolve commit SHA
+        id: sha
+        run: |
+          if [ -n "${{ inputs.commit_sha }}" ]; then
+            echo "value=${{ inputs.commit_sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find successful build run
+        id: find_run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const commitSha = '${{ steps.sha.outputs.value }}';
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'build-lambda-artifacts.yml',
+              per_page: 50
+            });
+            const run = data.workflow_runs.find(r =>
+              r.head_sha === commitSha && r.conclusion === 'success'
+            );
+            if (!run) core.setFailed(`No successful build-lambda-artifacts run found for ${commitSha}`);
+            core.setOutput('run_id', String(run.id));
+
+      - name: Download lambda tfvars
+        uses: actions/download-artifact@v4
+        with:
+          name: lambda-artifacts-tfvars
+          path: terraform
+          run-id: ${{ steps.find_run.outputs.run_id }}
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-tf-destroy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init & destroy
+        run: |
+          terraform -chdir=terraform init -input=false
+          terraform -chdir=terraform plan -destroy -out=tfdestroy.bin
+          terraform -chdir=terraform apply -auto-approve tfdestroy.bin
