@@ -1,4 +1,4 @@
-output "step_function_arn" {
+output "step_functions_arn" {
   value       = aws_sfn_state_machine.this.arn
-  description = "Step Function ARN"
+  description = "Step Functions ARN"
 }
