@@ -17,6 +17,7 @@ jobs:
     env: { AWS_REGION: us-east-1 }
     outputs:
       bucket: ${{ steps.out.outputs.bucket }}
+      bucket_arn: ${{ steps.out.outputs.bucket_arn }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -39,8 +40,11 @@ jobs:
         run: |
           set -euo pipefail
           BKT=$(terraform -chdir=env/shared/global/storage output -raw artifacts_bucket_name || true)
+          BKT_ARN=$(terraform -chdir=env/shared/global/storage output -raw artifacts_bucket_arn || true)
           test -n "$BKT" || { echo "Empty artifacts_bucket_name"; exit 1; }
+          test -n "$BKT_ARN" || { echo "Empty artifacts_bucket_arn"; exit 1; }
           echo "bucket=$BKT" >> "$GITHUB_OUTPUT"
+          echo "bucket_arn=$BKT_ARN" >> "$GITHUB_OUTPUT"
 
   build:
     needs: storage
@@ -49,6 +53,7 @@ jobs:
     env:
       AWS_REGION: us-east-1
       ARTIFACTS_BUCKET: ${{ needs.storage.outputs.bucket }}
+      ARTIFACTS_BUCKET_ARN: ${{ needs.storage.outputs.bucket_arn }}
     steps:
       - uses: actions/checkout@v4
 
@@ -88,6 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           aws ssm put-parameter --name "/i2508dr/ci/artifacts_bucket_name"  --type String --value "$ARTIFACTS_BUCKET" --overwrite
+          aws ssm put-parameter --name "/i2508dr/ci/artifacts_bucket_arn"  --type String --value "$ARTIFACTS_BUCKET_ARN" --overwrite
           aws ssm put-parameter --name "/i2508dr/ci/rds_snapshot_s3_key"    --type String --value "lambda/rds-snapshot/${GITHUB_SHA}.zip" --overwrite
           aws ssm put-parameter --name "/i2508dr/ci/rds_failover_s3_key"    --type String --value "lambda/rds-failover/${GITHUB_SHA}.zip" --overwrite
           aws ssm put-parameter --name "/i2508dr/ci/rds_snapshot_code_hash" --type String --value "${{ steps.hash.outputs.snapshot_hash }}" --overwrite
