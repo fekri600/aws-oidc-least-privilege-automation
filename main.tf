@@ -80,7 +80,7 @@ module "ssm" {
 module "iam" {
   source               = "./env/shared/global/iam"
   name_prefix          = local.name_prefix.prod_glb
-  artifacts_bucket_arn = data.ssm_parameter.artifacts_bucket_arn.value 
+  artifacts_bucket_arn = data.aws_ssm_parameter.artifacts_bucket_arn.value
   ci_role_arn          = module.ssm.ci_role_arn
   artifacts_prefix     = "lambda/"
 }
