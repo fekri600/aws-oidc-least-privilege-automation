@@ -5,7 +5,10 @@
       "Effect": "Allow",
       "Action": [
         "lambda:InvokeFunction",
-        "sns:Publish"
+        "sns:Publish",
+        "states:StartExecution",
+        "states:DescribeExecution",
+        "states:GetExecutionHistory"
       ],
       "Resource": "*"
     }

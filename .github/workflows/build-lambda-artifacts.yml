@@ -4,6 +4,10 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
+    # paths:
+    #   - 'services/rds-snapshot/src/**'
+    #   - 'services/rds-failover/src/**'
+    #   - 'env/shared/global/storage/**'
   workflow_dispatch: {}
 
 jobs:

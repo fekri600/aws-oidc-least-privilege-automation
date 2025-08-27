@@ -60,6 +60,15 @@ module "step_functions" {
   source              = "../../../../modules/step-functions"
   role_arn            = var.step_functions_role_arn
   name                = "${var.name_prefix}-rds-dr-sfn"
-  sns_topic_arn       = var.sns_topic_arn
-  lambda_failover_arn = module.lambda_failover.lambda_arn
+  state_machine_definition = templatefile("${path.module}/state_machine.json", {
+    sns_topic_arn       = var.sns_topic_arn
+    lambda_failover_arn = module.lambda_failover.lambda_arn
+  })
+  enable_logging = true
+  logging_level = "ALL"
+  include_execution_data = true
+  cloudwatch_log_group_name = var.cloudwatch_log_group_name
+  tags = {
+    Name = "${var.name_prefix}-rds-dr-sfn"
+  }
 }

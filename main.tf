@@ -18,6 +18,7 @@ module "prod_compute_1st" {
   rds_failover_code_hash   = module.ssm.rds_failover_code_hash
   rds_snapshot_s3_key      = module.ssm.rds_snapshot_s3_key
   rds_failover_s3_key      = module.ssm.rds_failover_s3_key  
+  cloudwatch_log_group_name = module.monitoring.cloudwatch_log_group_name
 }
 
 module "prod_database_1st" {
@@ -49,6 +50,14 @@ module "sns" {
   source             = "./env/prod/us-east-1/queuing"
   name_prefix        = local.name_prefix.prod_1st
   email_subscription = var.email_subscription
+}
+
+module "monitoring" {
+  source = "./env/prod/us-east-1/monitoring"
+  name_prefix = local.name_prefix.prod_1st
+  step_functions_arn = module.prod_compute_1st.step_functions_arn
+  step_functions_role_arn = module.iam.step_functions_role_arn
+  db_instance_id = module.prod_database_1st.db_instance_id
 }
 
 module "prod_networking_2nd" {

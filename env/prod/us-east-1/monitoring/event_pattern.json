@@ -1,0 +1,10 @@
+{
+  "source": ["aws.cloudwatch"],
+  "detail-type": ["CloudWatch Alarm State Change"],
+  "detail": {
+    "state": {
+      "value": ["ALARM"]
+    },
+    "alarmName": ["rds-database-connection-alarm"]
+  }
+}
