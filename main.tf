@@ -1,23 +1,23 @@
 module "prod_compute_1st" {
-  source                   = "./env/prod/us-east-1/compute"
-  name_prefix              = local.name_prefix.prod_1st
-  db_name                  = var.db_name
-  step_functions_role_arn  = module.iam.step_functions_role_arn
-  lambda_snapshot_role_arn = module.iam.lambda_snapshot_role_arn
-  lambda_failover_role_arn = module.iam.lambda_failover_role_arn
-  db_instance_id           = module.prod_database_1st.db_instance_id
-  db_instance_class        = var.db_instance_class
-  db_subnet_group_name_2nd = module.prod_networking_2nd.db_subnet_group_name
-  route53_zone_id          = module.dns_zone.zone_id
-  primary_endpoint_name    = module.prod_database_1st.db_primary_endpoint
-  active_endpoint_name     = module.prod_database_1st.db_active_endpoint
-  db_dns_record_name       = module.prod_database_1st.db_dns_record_name
-  sns_topic_arn            = module.sns.sns_topic_arn
-  artifacts_bucket_name    = module.ssm.artifacts_bucket_name
-  rds_snapshot_code_hash   = module.ssm.rds_snapshot_code_hash
-  rds_failover_code_hash   = module.ssm.rds_failover_code_hash
-  rds_snapshot_s3_key      = module.ssm.rds_snapshot_s3_key
-  rds_failover_s3_key      = module.ssm.rds_failover_s3_key  
+  source                    = "./env/prod/us-east-1/compute"
+  name_prefix               = local.name_prefix.prod_1st
+  db_name                   = var.db_name
+  step_functions_role_arn   = module.iam.step_functions_role_arn
+  lambda_snapshot_role_arn  = module.iam.lambda_snapshot_role_arn
+  lambda_failover_role_arn  = module.iam.lambda_failover_role_arn
+  db_instance_id            = module.prod_database_1st.db_instance_id
+  db_instance_class         = var.db_instance_class
+  db_subnet_group_name_2nd  = module.prod_networking_2nd.db_subnet_group_name
+  route53_zone_id           = module.dns_zone.zone_id
+  primary_endpoint_name     = module.prod_database_1st.db_primary_endpoint
+  active_endpoint_name      = module.prod_database_1st.db_active_endpoint
+  db_dns_record_name        = module.prod_database_1st.db_dns_record_name
+  sns_topic_arn             = module.sns.sns_topic_arn
+  artifacts_bucket_name     = module.ssm.artifacts_bucket_name
+  rds_snapshot_code_hash    = module.ssm.rds_snapshot_code_hash
+  rds_failover_code_hash    = module.ssm.rds_failover_code_hash
+  rds_snapshot_s3_key       = module.ssm.rds_snapshot_s3_key
+  rds_failover_s3_key       = module.ssm.rds_failover_s3_key
   cloudwatch_log_group_name = module.monitoring.cloudwatch_log_group_name
 }
 
@@ -53,11 +53,11 @@ module "sns" {
 }
 
 module "monitoring" {
-  source = "./env/prod/us-east-1/monitoring"
-  name_prefix = local.name_prefix.prod_1st
-  step_functions_arn = module.prod_compute_1st.step_functions_arn
+  source                  = "./env/prod/us-east-1/monitoring"
+  name_prefix             = local.name_prefix.prod_1st
+  step_functions_arn      = module.prod_compute_1st.step_functions_arn
   step_functions_role_arn = module.iam.step_functions_role_arn
-  db_instance_id = module.prod_database_1st.db_instance_id
+  db_instance_id          = module.prod_database_1st.db_instance_id
 }
 
 module "prod_networking_2nd" {

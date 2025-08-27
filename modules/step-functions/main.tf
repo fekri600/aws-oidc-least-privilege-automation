@@ -1,8 +1,8 @@
 resource "aws_sfn_state_machine" "this" {
-  name     = var.name
-  role_arn = var.role_arn
+  name       = var.name
+  role_arn   = var.role_arn
   definition = var.state_machine_definition
-  
+
   dynamic "logging_configuration" {
     for_each = var.enable_logging ? [1] : []
     content {
@@ -11,6 +11,6 @@ resource "aws_sfn_state_machine" "this" {
       log_destination        = var.cloudwatch_log_group_name
     }
   }
-  
+
   tags = var.tags
 }
