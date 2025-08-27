@@ -1,10 +1,10 @@
 # Lambda snapshot Function (OUTSIDE VPC)
 module "lambda_snapshot" {
-  source        = "../../../../modules/lambda" # or ./modules/lambda-function if that's your path
-  function_name = "${var.name_prefix}-lambda-snapshot"
-  role_arn      = var.lambda_snapshot_role_arn
-  handler       = "handler.lambda_handler" # must match your file, e.g., services/rds-snapshot/src/handler.py
-  runtime       = "python3.12"
+  source           = "../../../../modules/lambda" # or ./modules/lambda-function if that's your path
+  function_name    = "${var.name_prefix}-lambda-snapshot"
+  role_arn         = var.lambda_snapshot_role_arn
+  handler          = "handler.lambda_handler" # must match your file, e.g., services/rds-snapshot/src/handler.py
+  runtime          = "python3.12"
   s3_bucket        = var.artifacts_bucket_name
   s3_key           = var.rds_snapshot_s3_key
   source_code_hash = var.rds_snapshot_code_hash
@@ -12,7 +12,7 @@ module "lambda_snapshot" {
     DB_INSTANCE_ID = var.db_instance_id
     SNS_TOPIC_ARN  = var.sns_topic_arn
     ACCOUNT_ID     = data.aws_caller_identity.current.account_id
-  }   
+  }
 }
 
 
@@ -57,9 +57,18 @@ resource "aws_lambda_permission" "sf_invoke_failover" {
 
 
 module "step_functions" {
-  source              = "../../../../modules/step-functions"
-  role_arn            = var.step_functions_role_arn
-  name                = "${var.name_prefix}-rds-dr-sfn"
-  sns_topic_arn       = var.sns_topic_arn
-  lambda_failover_arn = module.lambda_failover.lambda_arn
+  source   = "../../../../modules/step-functions"
+  role_arn = var.step_functions_role_arn
+  name     = "${var.name_prefix}-rds-dr-sfn"
+  state_machine_definition = templatefile("${path.module}/state_machine.json", {
+    sns_topic_arn       = var.sns_topic_arn
+    lambda_failover_arn = module.lambda_failover.lambda_arn
+  })
+  enable_logging            = true
+  logging_level             = "ALL"
+  include_execution_data    = true
+  cloudwatch_log_group_name = var.cloudwatch_log_group_name
+  tags = {
+    Name = "${var.name_prefix}-rds-dr-sfn"
+  }
 }

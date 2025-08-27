@@ -43,7 +43,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   rule {
     id     = "expire-old-versions"
     status = "Enabled"
-    filter { prefix = var.artifacts_prefix}
+    filter { prefix = var.artifacts_prefix }
     noncurrent_version_expiration { noncurrent_days = var.noncurrent_expire_days }
   }
 }

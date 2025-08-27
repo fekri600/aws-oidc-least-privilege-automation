@@ -9,8 +9,8 @@ locals {
   ingress_cidr = [for r in var.ingress_rules : r if try(length(r.cidr_blocks) > 0, false)]
   ingress_sg   = [for r in var.ingress_rules : r if try(r.source_sg_id != null && r.source_sg_id != "", false)]
 
-  egress_cidr  = [for r in var.egress_rules  : r if try(length(r.cidr_blocks) > 0, false)]
-  egress_sg    = [for r in var.egress_rules  : r if try(r.source_sg_id != null && r.source_sg_id != "", false)]
+  egress_cidr = [for r in var.egress_rules : r if try(length(r.cidr_blocks) > 0, false)]
+  egress_sg   = [for r in var.egress_rules : r if try(r.source_sg_id != null && r.source_sg_id != "", false)]
 }
 
 # Ingress from CIDRs
