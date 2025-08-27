@@ -84,7 +84,7 @@
     },
     
     {
-      "Sid": "SSMParameterAccess",
+      "Sid": "SSMGetParameter",
       "Effect": "Allow",
       "Action": [
         "ssm:GetParameter",
@@ -93,6 +93,14 @@
         "ssm:DescribeParameters"
       ],
       "Resource": "arn:aws:ssm:us-east-1:490004637046:parameter/i2508/oidc/github_trust_role_arn"
+    },
+    {
+      "Sid": "SSMPutParameter",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter"
+      ],
+      "Resource": "arn:aws:ssm:us-east-1:490004637046:parameter/*"
     },
     {
       "Sid": "IAMManagement",
