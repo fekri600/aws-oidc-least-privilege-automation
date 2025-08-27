@@ -46,7 +46,7 @@ jobs:
           role-session-name: gha-tf-plan
           aws-region: us-east-1
 
-      - name: terraform init 
+      - name: terraform init
         run: |
           terraform init -input=false -upgrade
       - name: terraform validate

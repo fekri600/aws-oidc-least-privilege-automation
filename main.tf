@@ -55,7 +55,7 @@ module "sns" {
 module "monitoring" {
   source                  = "./env/prod/us-east-1/monitoring"
   name_prefix             = local.name_prefix.prod_1st
-  step_functions_arn      = module.prod_compute_1st.step_functions_arn 
+  step_functions_arn      = module.prod_compute_1st.step_functions_arn
   step_functions_role_arn = module.iam.step_functions_role_arn
   db_instance_id          = module.prod_database_1st.db_instance_id
 }
