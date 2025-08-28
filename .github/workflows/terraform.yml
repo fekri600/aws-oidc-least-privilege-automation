@@ -25,9 +25,8 @@ on:
         type: string
 
 jobs:
-  # Auto-plan when build workflow completes successfully
   plan:
-    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy')
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read, actions: read }
     steps:
@@ -37,7 +36,8 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
 
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.12.2 }
+        with:
+          terraform_version: 1.12.2
 
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -47,23 +47,21 @@ jobs:
           aws-region: us-east-1
 
       - name: terraform init
-        run: |
-          terraform init -input=false -upgrade
+        run: terraform init -input=false -upgrade
       - name: terraform validate
-        run: |
-          terraform validate
+        run: terraform validate
       - name: terraform plan
-        run: |
-          terraform plan -out=tfplan.bin
+        run: terraform plan -out=tfplan.bin
 
       - uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: tfplan.bin
 
-  # Manual DEPLOY job
   deploy:
+    # manual trigger but only after plan succeeded
     if: github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'
+    needs: plan
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read, actions: read }
     env:
@@ -71,7 +69,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.12.2 }
+        with:
+          terraform_version: 1.12.2
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -89,9 +88,10 @@ jobs:
         run: |
           terraform init -input=false -upgrade
           terraform validate
+
       - name: Apply Terraform plan
-        run: |
-          terraform apply -auto-approve tfplan.bin
+        run: terraform apply -auto-approve tfplan.bin
+
 
   # Manual DESTROY job
   destroy:
