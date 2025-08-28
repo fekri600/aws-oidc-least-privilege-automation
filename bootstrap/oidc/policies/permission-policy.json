@@ -183,3 +183,9 @@
     }
   ]
 }
+
+// S3:PutBucketPolicy
+// iam:GetRolePolicy
+// events:PutRule
+// ec2:CreateVpc
+
