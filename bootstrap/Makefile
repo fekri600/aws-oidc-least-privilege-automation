@@ -5,8 +5,11 @@ deploy:
 	@echo " Deploying bootstrap ..."
 	terraform init && terraform apply -auto-approve
 	
-	@echo " Generating backend.tf..."
-	bash backend_setup/generate_backend_file.sh "$$(terraform output -raw bucket_name)" "$$(terraform output -raw region)" "$$(terraform output -raw dynamodb_table_name)"
+	@echo " Generating root backend.tf..."
+	bash backend_setup/generate_backend_file.sh "$$(terraform output -raw bucket_name)" "envs/terraform.tfstate" "$$(terraform output -raw region)" "$$(terraform output -raw dynamodb_table_name)" "../backend.tf"
+    
+	@echo " Generating storage backend.tf..."
+	bash backend_setup/generate_backend_file.sh "$$(terraform output -raw bucket_name)" "envs/storage/terraform.tfstate" "$$(terraform output -raw region)" "$$(terraform output -raw dynamodb_table_name)" "../env/shared/global/storage/backend.tf"
 
 
 	@echo " Setting GitHub secrets..."

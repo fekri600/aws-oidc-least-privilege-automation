@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 set -e
 BUCKET_NAME="$1"
-REGION="$2"
-DYNAMODB_TABLE_NAME="$3"
+KEY="$2"
+REGION="$3"
+DYNAMODB_TABLE_NAME="$4"
+OUTPUT_FILE="$5"
 # Generate the backend.tf file in the bootstrap-improve root directory
-cat > "../backend.tf" <<EOF
+cat > "${OUTPUT_FILE}" <<EOF
 terraform {
   backend "s3" {
     bucket         = "${BUCKET_NAME}"
-    key            = "envs/terraform.tfstate"
+    key            = "${KEY}"
     region         = "${REGION}"
     dynamodb_table = "${DYNAMODB_TABLE_NAME}"
     encrypt        = true
