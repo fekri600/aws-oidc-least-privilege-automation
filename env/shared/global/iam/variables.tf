@@ -17,3 +17,8 @@ variable "artifacts_prefix" {
   type        = string
   description = "The prefix of the artifacts"
 }
+
+variable "artifacts_bucket_name" {
+  type        = string
+  description = "The name of the artifacts bucket"
+}

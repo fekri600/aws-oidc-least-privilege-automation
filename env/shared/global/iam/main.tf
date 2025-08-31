@@ -33,6 +33,6 @@ resource "aws_iam_role_policy" "step_functions_policy" {
 
 
 resource "aws_s3_bucket_policy" "artifacts" {
-  bucket = var.artifacts_bucket_arn
+  bucket = var.artifacts_bucket_name
   policy = local.artifacts_bucket_policy
 }

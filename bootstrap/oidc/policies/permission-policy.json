@@ -11,7 +11,8 @@
         "s3:ListBucket",
         "s3:GetBucketAcl",
         "s3:PutObjectAcl",
-        "s3:CreateBucket"
+        "s3:CreateBucket",
+        "S3:PutBucketPolicy"
       ],
       "Resource": [
         "arn:aws:s3:::${state_bucket_name}",
@@ -57,7 +58,8 @@
 				"s3:PutBucketPublicAccessBlock",
 				"s3:PutEncryptionConfiguration",
 				"s3:GetBucketPublicAccessBlock",
-				"s3:GetEncryptionConfiguration"
+				"s3:GetEncryptionConfiguration",
+        "s3:PutBucketPolicy"
 			],
 			"Effect": "Allow",
 			"Resource": [
@@ -82,6 +84,20 @@
       ],
       "Resource": "*"
     },
+    {
+      "Sid": "EC2Management",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateVpc",
+        "ec2:CreateSubnet",
+        "ec2:CreateRouteTable",
+        "ec2:CreateInternetGateway",
+        "ec2:CreateTags",
+        "ec2:DescribeVpcs"
+      ],
+      "Resource": "*"
+    },
+
     
     {
       "Sid": "SSMParameter",
@@ -114,7 +130,9 @@
         "iam:CreateInstanceProfile",
         "iam:GetInstanceProfile",
         "iam:DeleteInstanceProfile",
-        "iam:AddRoleToInstanceProfile"
+        "iam:AddRoleToInstanceProfile",
+        "iam:GetRolePolicy",
+        "iam:CreateRole"
       ],
       "Resource": "*"
     },
@@ -177,15 +195,19 @@
         "logs:PutMetricFilter",
         "logs:ListTagsForResource",
         "logs:DescribeMetricFilters",
-        "logs:DeleteMetricFilter"
+        "logs:DeleteMetricFilter",
+        "events:PutRule",
+        "events:DescribeRule", 
+        "logs:CreateLogGroup",
+        "events:ListTagsForResource",
+        "events:DeleteRule"
+      
       ],
       "Resource": "*"
     }
   ]
 }
 
-// S3:PutBucketPolicy
-// iam:GetRolePolicy
-// events:PutRule
-// ec2:CreateVpc
+
+
 

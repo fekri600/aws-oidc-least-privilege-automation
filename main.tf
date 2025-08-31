@@ -82,6 +82,7 @@ module "iam" {
   name_prefix          = local.name_prefix.prod_glb
   artifacts_bucket_arn = module.ssm.artifacts_bucket_arn
   ci_role_arn          = module.ssm.ci_role_arn
+  artifacts_bucket_name = module.ssm.artifacts_bucket_name
   artifacts_prefix     = "lambda/"
 }
 
