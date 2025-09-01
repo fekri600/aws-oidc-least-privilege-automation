@@ -17,7 +17,7 @@ availability_zones_1st = ["us-east-1a", "us-east-1b"]
 # Secondary Region Configuration
 secondary_region = "us-west-1"
 
-availability_zones_2nd = ["us-west-1a", "us-west-1b"]
+availability_zones_2nd = ["us-west-1a", "us-west-1c"]
 
 zone_name = "fekri.ca"
 

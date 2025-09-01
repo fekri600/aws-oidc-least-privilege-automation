@@ -2,12 +2,6 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "all",
-      "Effect": "Allow",
-      "Action": ["*"],
-      "Resource": "*"
-    },
-    {
       "Sid": "S3StateManagement",
       "Effect": "Allow",
       "Action": [
@@ -125,16 +119,6 @@
       "Resource": "*"
     },
     {
-      "Sid": "Route53Management",
-      "Effect": "Allow",
-      "Action": [
-        "route53:CreateHostedZone"
-
-      ],
-      "Resource": "*"
-    },
-    
-    {
       "Sid": "SSMParameter",
       "Effect": "Allow",
       "Action": [
@@ -237,6 +221,22 @@
         "events:ListTagsForResource",
         "events:DeleteRule"
       
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Route53Management",
+      "Effect": "Allow",
+      "Action": [
+        "route53:CreateHostedZone",
+        "route53:DeleteHostedZone",
+        "route53:UpdateHostedZone",
+        "route53:GetHostedZone",
+        "route53:ListHostedZones",
+        "route53:ListTagsForResource",
+        "route53:PutTagsForResource",
+        "route53:DeleteTagsForResource",
+        "route53:GetTagsForResource"
       ],
       "Resource": "*"
     }
