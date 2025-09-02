@@ -8,7 +8,7 @@ module "prod_compute_1st" {
   db_instance_id            = module.prod_database_1st.db_instance_id
   db_instance_class         = var.db_instance_class
   db_subnet_group_name_2nd  = module.prod_networking_2nd.db_subnet_group_name
-  route53_zone_id           = module.dns_zone.zone_id
+  route53_zone_id           = module.dns_zone_2nd.zone_id
   primary_endpoint_name     = module.prod_database_1st.db_primary_endpoint
   active_endpoint_name      = module.prod_database_1st.db_active_endpoint
   db_dns_record_name        = module.prod_database_1st.db_dns_record_name
@@ -29,7 +29,7 @@ module "prod_database_1st" {
   vpc_id                = module.prod_networking_1st.vpc_id
   db_subnet_group_name  = module.prod_networking_1st.db_subnet_group_name
   rds_security_group_id = module.prod_security_1st.rds_security_group_id
-  route53_zone_id       = module.dns_zone.zone_id
+  route53_zone_id       = module.dns_zone_1st.zone_id
   db_username           = module.ssm.db_username
   db_password           = module.ssm.db_password
 }
@@ -44,6 +44,7 @@ module "prod_networking_1st" {
   source             = "./env/prod/us-west-1/networking"
   name_prefix        = local.name_prefix.prod_1st
   availability_zones = var.availability_zones_1st
+  environment        = "prod"
 }
 
 module "sns" {
@@ -60,14 +61,25 @@ module "monitoring" {
   db_instance_id          = module.prod_database_1st.db_instance_id
 }
 
+module "dns_zone_1st" {
+  source    = "./env/prod/us-east-1/dns"
+  vpc_1st   = module.prod_networking_1st.vpc_id
+  zone_name = var.zone_name
+}
+
 module "prod_networking_2nd" {
   source             = "./env/prod/us-east-1/networking"
   name_prefix        = local.name_prefix.prod_2nd
   availability_zones = var.availability_zones_2nd
-
+  environment        = "prod"
   providers = {
     aws = aws.secondary
   }
+}
+module "dns_zone_2nd" {
+  source    = "./env/prod/us-west-1/dns"
+  vpc_2nd   = module.prod_networking_2nd.vpc_id
+  zone_name = var.zone_name
 }
 
 module "ssm" {
@@ -86,10 +98,5 @@ module "iam" {
   artifacts_prefix     = "lambda/"
 }
 
-module "dns_zone" {
-  source    = "./env/shared/global/dns"
-  zone_name = var.zone_name
-  vpc_1st   = module.prod_networking_1st.vpc_id
-  vpc_2nd   = module.prod_networking_2nd.vpc_id
-}
+
 

@@ -1,11 +1,11 @@
 output "record_name" {
-  value = aws_route53_record.rds_dns.name
+  value = aws_route53_record.this.name
 }
 
 output "record_type" {
-  value = aws_route53_record.rds_dns.type
+  value = aws_route53_record.this.type
 }
 
 output "record_id" {
-  value = aws_route53_record.rds_dns.id
+  value = aws_route53_record.this.id
 }

@@ -1,6 +1,7 @@
 {
   "Version": "2012-10-17",
   "Statement": [
+
     {
       "Sid": "S3StateManagement",
       "Effect": "Allow",
@@ -112,8 +113,28 @@
         "ec2:DisassociateRouteTable",
         "ec2:DescribeSecurityGroups",
         "ec2:DeleteSecurityGroup",
-        "ec2:DescribeSubnets"
-        
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:CreateNetworkInterface",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DescribeNetworkInterfaceAttribute",
+        "ec2:ModifyNetworkInterfaceAttribute",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DetachNetworkInterface",
+        "ec2:AttachNetworkInterface",
+        "ec2:DeleteNetworkInterface",
+        "ec2:DeleteSubnet",
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupEgress",
+        "ec2:DescribeSecurityGroupRules"
+
+
+
+
 
       ],
       "Resource": "*"
@@ -126,9 +147,11 @@
         "ssm:GetParameters",
         "ssm:GetParameterHistory",
         "ssm:DescribeParameters",
-        "ssm:PutParameter"
+        "ssm:PutParameter",
+        "ssm:DescribeParameters",
+        "ssm:ListTagsForResource"
       ],
-      "Resource": "arn:aws:ssm:us-east-1:490004637046:parameter/*"
+      "Resource": "arn:aws:ssm:us-east-1:490004637046:*"
     },
 
     {
@@ -219,7 +242,8 @@
         "events:DescribeRule", 
         "logs:CreateLogGroup",
         "events:ListTagsForResource",
-        "events:DeleteRule"
+        "events:DeleteRule",
+        "events:ListTargetsByRule"
       
       ],
       "Resource": "*"
@@ -237,6 +261,25 @@
         "route53:PutTagsForResource",
         "route53:DeleteTagsForResource",
         "route53:GetTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "LambdaManagement",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:GetFunction",
+        "lambda:ListFunctions",
+        "lambda:ListTagsForResource",
+        "lambda:InvokeFunction",
+        "lambda:ListVersionsByFunction",
+        "lambda:GetFunctionCodeSigningConfig",
+        "lambda:GetPolicy"
+
       ],
       "Resource": "*"
     }

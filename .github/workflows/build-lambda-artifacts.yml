@@ -1,13 +1,10 @@
 name: build-lambda-artifacts
 on:
   push:
-    paths-ignore:
-      - 'docs/**'
-      - '**/*.md'
-    # paths:
-    #   - 'services/rds-snapshot/src/**'
-    #   - 'services/rds-failover/src/**'
-    #   - 'env/shared/global/storage/**'
+    paths:
+      - 'services/rds-snapshot/src/**'
+      - 'services/rds-failover/src/**'
+      - 'env/shared/global/storage/**'
   workflow_dispatch: {}
 
 jobs:

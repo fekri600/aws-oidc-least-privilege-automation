@@ -1,4 +1,4 @@
-resource "aws_route53_zone" "this" {
+resource "aws_route53_zone" "private" {
   name    = var.zone_name
   comment = "Private hosted zone for RDS failover"
   vpc {

@@ -1,7 +1,4 @@
-variable "vpc_1st" {
-  description = "VPC ID for the first region"
-  type        = string
-}
+
 
 variable "vpc_2nd" {
   description = "VPC ID for the second region"
