@@ -1,8 +1,8 @@
 module "ipam" {
-  source             = "../../../../modules/ipam"
-  environment        = var.environment
-  vpc_name           = "${var.name_prefix}-vpc"
-  public_subnets_count = length(var.availability_zones)
+  source                = "../../../../modules/ipam"
+  environment           = var.environment
+  vpc_name              = "${var.name_prefix}-vpc"
+  public_subnets_count  = length(var.availability_zones)
   private_subnets_count = length(var.availability_zones)
 }
 # VPC for Primary Region

@@ -3,8 +3,8 @@ variable "zone_name" {
   description = "Route53 zone name"
 }
 
-variable "vpc_ids" {
-  type        = list(string)
-  description = "VPC IDs"
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID"
 }
 

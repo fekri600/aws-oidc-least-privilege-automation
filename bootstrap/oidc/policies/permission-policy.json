@@ -243,45 +243,62 @@
         "logs:CreateLogGroup",
         "events:ListTagsForResource",
         "events:DeleteRule",
-        "events:ListTargetsByRule"
-      
+        "events:ListTargetsByRule",
+        "events:PutTargets"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "Route53Management",
-      "Effect": "Allow",
-      "Action": [
-        "route53:CreateHostedZone",
-        "route53:DeleteHostedZone",
-        "route53:UpdateHostedZone",
-        "route53:GetHostedZone",
-        "route53:ListHostedZones",
-        "route53:ListTagsForResource",
-        "route53:PutTagsForResource",
-        "route53:DeleteTagsForResource",
-        "route53:GetTagsForResource"
-      ],
-      "Resource": "*"
+        "Action": [
+            "route53:CreateHostedZone",
+            "route53:DeleteHostedZone",
+            "route53:GetHostedZone",
+            "route53:ListHostedZones",
+            "route53:ListTagsForResource",
+            "route53:ListResourceRecordSets",
+            "route53:GetChange",
+            "route53:ChangeResourceRecordSets"
+        ],
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "Route53Management"
     },
     {
-      "Sid": "LambdaManagement",
-      "Effect": "Allow",
-      "Action": [
-        "lambda:CreateFunction",
-        "lambda:DeleteFunction",
-        "lambda:UpdateFunctionCode",
-        "lambda:UpdateFunctionConfiguration",
-        "lambda:GetFunction",
-        "lambda:ListFunctions",
-        "lambda:ListTagsForResource",
-        "lambda:InvokeFunction",
-        "lambda:ListVersionsByFunction",
-        "lambda:GetFunctionCodeSigningConfig",
-        "lambda:GetPolicy"
-
-      ],
-      "Resource": "*"
+        "Action": [
+            "lambda:CreateFunction",
+            "lambda:DeleteFunction",
+            "lambda:UpdateFunctionCode",
+            "lambda:UpdateFunctionConfiguration",
+            "lambda:GetFunction",
+            "lambda:ListFunctions",
+            "lambda:InvokeFunction",
+            "lambda:ListVersionsByFunction",
+            "lambda:GetFunctionCodeSigningConfig",
+            "lambda:GetPolicy",
+            "lambda:AddPermission"
+        ],
+        "Effect": "Allow",
+        "Resource": "*",
+        "Sid": "LambdaManagement"
+    },
+    {
+        "Sid": "StepFunctionsManagement",
+        "Effect": "Allow",
+        "Action": [
+            "states:ValidateStateMachineDefinition",
+            "states:DescribeStateMachineForExecution",
+            "states:ListExecutions",
+            "states:StartExecution",
+            "states:DescribeExecution",
+            "states:GetExecutionHistory",
+				    "states:CreateStateMachine",
+            "states:TagResource",
+            "states:UntagResource",
+            "states:UpdateStateMachine",
+            "states:ListStateMachines",
+            "states:DeleteStateMachine"
+        ],
+        "Resource": "*"
     }
   ]
 }

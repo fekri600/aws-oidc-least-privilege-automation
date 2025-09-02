@@ -80,6 +80,9 @@ module "dns_zone_2nd" {
   source    = "./env/prod/us-west-1/dns"
   vpc_2nd   = module.prod_networking_2nd.vpc_id
   zone_name = var.zone_name
+  providers = {
+    aws = aws.secondary
+  }
 }
 
 module "ssm" {
@@ -90,12 +93,12 @@ module "ssm" {
 
 
 module "iam" {
-  source               = "./env/shared/global/iam"
-  name_prefix          = local.name_prefix.prod_glb
-  artifacts_bucket_arn = module.ssm.artifacts_bucket_arn
-  ci_role_arn          = module.ssm.ci_role_arn
+  source                = "./env/shared/global/iam"
+  name_prefix           = local.name_prefix.prod_glb
+  artifacts_bucket_arn  = module.ssm.artifacts_bucket_arn
+  ci_role_arn           = module.ssm.ci_role_arn
   artifacts_bucket_name = module.ssm.artifacts_bucket_name
-  artifacts_prefix     = "lambda/"
+  artifacts_prefix      = "lambda/"
 }
 
 

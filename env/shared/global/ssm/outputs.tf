@@ -35,7 +35,7 @@ output "rds_snapshot_code_hash" {
 
 output "rds_failover_code_hash" {
   value = data.aws_ssm_parameter.rds_failover_code_hash.value
-} 
+}
 
 output "artifacts_bucket_arn" {
   value = data.aws_ssm_parameter.artifacts_bucket_arn.value

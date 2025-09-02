@@ -5,6 +5,12 @@
     },
     "i2508dr-prod-2nd|i2508dr-prod-2nd-vpc": {
       "cidr": "10.1.0.0/16"
+    },
+    "prod|i2508dr-prod-2nd-vpc": {
+      "cidr": "10.2.0.0/16"
+    },
+    "prod|i2508dr-prod-1st-vpc": {
+      "cidr": "10.3.0.0/16"
     }
   },
   "subnets": {}

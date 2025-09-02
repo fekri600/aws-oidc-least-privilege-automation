@@ -51,7 +51,7 @@ module "lambda_failover" {
 resource "aws_lambda_permission" "sf_invoke_failover" {
   statement_id  = "AllowSFInvokeFailover"
   action        = "lambda:InvokeFunction"
-  function_name = module.lambda_failover.lambda_name 
+  function_name = module.lambda_failover.lambda_name
   principal     = "states.amazonaws.com"
 }
 

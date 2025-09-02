@@ -1,16 +1,8 @@
 resource "aws_route53_zone" "private" {
   name    = var.zone_name
-  comment = "Private hosted zone for RDS failover"
-  vpc {
-    vpc_id = var.vpc_ids[0]
-  }
+  comment = "Private hosted zone for ${var.zone_name}"
 
-  dynamic "vpc" {
-    for_each = slice(var.vpc_ids, 1, length(var.vpc_ids))
-    content {
-      vpc_id = vpc.value
-    }
+  vpc {
+    vpc_id = var.vpc_id
   }
 }
-
-
