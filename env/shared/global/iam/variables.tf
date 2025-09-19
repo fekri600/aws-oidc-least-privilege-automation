@@ -8,10 +8,7 @@ variable "artifacts_bucket_arn" {
   description = "The ARN of the artifacts bucket"
 }
 
-variable "ci_role_arn" {
-  type        = string
-  description = "The ARN of the CI role"
-}
+
 
 variable "artifacts_prefix" {
   type        = string
@@ -21,4 +18,9 @@ variable "artifacts_prefix" {
 variable "artifacts_bucket_name" {
   type        = string
   description = "The name of the artifacts bucket"
+}
+
+variable "ci_role_arn" {
+  type        = string
+  description = "The ARN of the CI role"
 }

@@ -1,32 +1,21 @@
 # Get current account information
 
-module "backend_setup" {
-  source = "./backend_setup"
-
-  state_bucket_name               = var.state_bucket_name
-  state_bucket_versioning_enabled = var.state_bucket_versioning_enabled
-  state_bucket_sse_algorithm      = var.state_bucket_sse_algorithm
-  state_bucket_tags               = var.state_bucket_tags
-
-  block_public_acls       = var.public_access_block_config.block_public_acls
-  block_public_policy     = var.public_access_block_config.block_public_policy
-  ignore_public_acls      = var.public_access_block_config.ignore_public_acls
-  restrict_public_buckets = var.public_access_block_config.restrict_public_buckets
-
-  dynamodb_table_name     = var.dynamodb_table_name
-  dynamodb_billing_mode   = var.dynamodb_billing_mode
-  dynamodb_hash_key       = var.dynamodb_hash_key
-  dynamodb_attribute_type = var.dynamodb_attribute_type
-  dynamodb_table_tags     = var.dynamodb_table_tags
+module "backend-bucket" {
+  source            = "./modules/backend-bucket"
+  state_bucket_name = "${module.repo-param.repo_name}-state-${random_id.bucket_suffix.hex}"
 }
 
-
-
+module "asw-data" {
+  source = "./data/asw-data"
+}
+module "repo-param" {
+  source = "./data/repo-data"
+}
 module "oidc" {
-  source = "./oidc"
+  source = "./modules/oidc"
 
-  # Pass backend_setup output as input
-  state_bucket_name = module.backend_setup.bucket_name
+  # Pass backend-bucket output as input
+  state_bucket_name = module.backend-bucket.bucket_name
 
   # Pass remaining variables from bootstrap
   iam_role_name        = var.iam_role_name
@@ -34,6 +23,26 @@ module "oidc" {
   oidc_url             = var.oidc_url
   oidc_client_id_list  = var.oidc_client_id_list
   oidc_thumbprint_list = var.oidc_thumbprint_list
+  branch               = "main"
+  account_id           = module.asw-data.account_id
+  repo_owner           = module.repo-param.repo_owner
+  repo_name            = module.repo-param.repo_name 
 }
+
+# module "explorer" {
+#   source = "./modules/explorer"
+  
+# }
+
+module "cloudtrail" {
+  source = "./modules/cloudtrail"
+  suffix = module.asw-data.account_id
+  account_id = module.asw-data.account_id
+}
+
+
+
+
+
 
 

@@ -63,7 +63,3 @@ variable "rds_failover_s3_key" {
   type = string
 }
 
-variable "cloudwatch_log_group_name" {
-  type        = string
-  description = "CloudWatch log group name for step functions"
-}

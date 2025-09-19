@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "resource-explorer-2:CreateIndex",
+        "resource-explorer-2:CreateView",
+        "resource-explorer-2:GetIndex",
+        "resource-explorer-2:GetView",
+        "resource-explorer-2:ListViews",
+        "resource-explorer-2:UpdateIndex",
+        "resource-explorer-2:UpdateView",
+        "resource-explorer-2:DeleteIndex",
+        "resource-explorer-2:DeleteView",
+        "resource-explorer-2:AssociateDefaultView",
+        "resource-explorer-2:DisassociateDefaultView",
+        "resource-explorer-2:GetDefaultView"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

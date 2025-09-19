@@ -26,8 +26,3 @@ resource "aws_cloudwatch_event_target" "invoke_stepfn" {
   arn       = var.step_functions_arn
   role_arn  = var.step_functions_role_arn
 }
-
-resource "aws_cloudwatch_log_group" "stepfn_log" {
-  name              = "/aws/stepfunction/${var.name_prefix}-rds-dr-sfn"
-  retention_in_days = 14
-}

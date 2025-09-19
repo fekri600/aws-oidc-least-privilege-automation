@@ -2,15 +2,11 @@
 
 
 output "region" {
-  value = module.backend_setup.region
+  value = module.backend-bucket.region
 }
 
 output "bucket_name" {
-  value = module.backend_setup.bucket_name
-}
-
-output "dynamodb_table_name" {
-  value = module.backend_setup.dynamodb_table_name
+  value = module.backend-bucket.bucket_name
 }
 
 output "trust_role_github" {

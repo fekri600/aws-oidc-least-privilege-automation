@@ -11,7 +11,6 @@ locals {
 
   artifacts_bucket_policy = templatefile("${path.module}/policies/artifacts_bucket_policy.json", {
     bucket_arn  = var.artifacts_bucket_arn
-    ci_role_arn = var.ci_role_arn
     prefix      = var.artifacts_prefix
   })
 }

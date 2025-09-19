@@ -1,0 +1,12 @@
+{
+    "accessRole": "arn:aws:iam::490004637046:role/AccessAnalyzerPolicyGenRole",
+    "startTime": "2025-09-18T00:00:00Z",
+    "endTime": "2025-09-19T04:29:29Z",
+    "trails": [
+      {
+        "allRegions": true,
+        "cloudTrailArn": "arn:aws:cloudtrail:us-east-1:490004637046:trail/org-trail"
+      }
+    ]
+  }
+  

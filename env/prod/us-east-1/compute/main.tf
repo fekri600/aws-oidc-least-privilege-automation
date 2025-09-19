@@ -56,6 +56,11 @@ resource "aws_lambda_permission" "sf_invoke_failover" {
 }
 
 
+resource "aws_cloudwatch_log_group" "stepfn_log" {
+  name              = "/aws/stepfunction/${var.name_prefix}-rds-dr-sfn"
+  retention_in_days = 14
+}
+
 module "step_functions" {
   source   = "../../../../modules/step-functions"
   role_arn = var.step_functions_role_arn
@@ -67,7 +72,7 @@ module "step_functions" {
   enable_logging            = true
   logging_level             = "ALL"
   include_execution_data    = true
-  cloudwatch_log_group_name = var.cloudwatch_log_group_name
+  cloudwatch_log_group_name = aws_cloudwatch_log_group.stepfn_log.name
   tags = {
     Name = "${var.name_prefix}-rds-dr-sfn"
   }

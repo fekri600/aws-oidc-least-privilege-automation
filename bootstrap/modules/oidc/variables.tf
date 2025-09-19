@@ -29,6 +29,22 @@ variable "state_bucket_name" {
 }
 
 variable "branch" {
-  default = "main"
+  description = "The branch of the repository to be used"
+  type        = string
+  default     = "main"
 }
 
+variable "repo_owner" {
+  description = "The owner of the repository to be used"
+  type        = string
+}
+
+variable "repo_name" {
+  description = "The name of the repository to be used"
+  type        = string
+}
+
+variable "account_id" {
+  description = "The ID of the AWS account to be used"
+  type        = string
+}

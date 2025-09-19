@@ -18,7 +18,6 @@ module "prod_compute_1st" {
   rds_failover_code_hash    = module.ssm.rds_failover_code_hash
   rds_snapshot_s3_key       = module.ssm.rds_snapshot_s3_key
   rds_failover_s3_key       = module.ssm.rds_failover_s3_key
-  cloudwatch_log_group_name = module.monitoring.cloudwatch_log_group_name
 }
 
 module "prod_database_1st" {
@@ -96,9 +95,9 @@ module "iam" {
   source                = "./env/shared/global/iam"
   name_prefix           = local.name_prefix.prod_glb
   artifacts_bucket_arn  = module.ssm.artifacts_bucket_arn
-  ci_role_arn           = module.ssm.ci_role_arn
   artifacts_bucket_name = module.ssm.artifacts_bucket_name
   artifacts_prefix      = "lambda/"
+  ci_role_arn           = var.ci_role_arn
 }
 
 

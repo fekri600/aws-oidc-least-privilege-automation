@@ -14,8 +14,8 @@ resource "aws_iam_role" "github_trust_role" {
 
   assume_role_policy = templatefile("${path.module}/policies/trust-policy.json", {
     oidc_provider_arn = local.oidc_provider_arn
-    github_repo_owner = data.external.github_repo.result.owner
-    github_repo_name  = data.external.github_repo.result.name
+    github_repo_owner = var.repo_owner
+    github_repo_name  = var.repo_name
     branch            = var.branch
   })
 }
@@ -38,7 +38,7 @@ resource "aws_iam_role_policy_attachment" "github_actions_permissions" {
 }
 
 resource "aws_ssm_parameter" "github_trust_role_arn" {
-  name      = "/i2508/oidc/github_trust_role_arn"
+  name      = "/${var.repo_owner}/${var.repo_name}/oidc/gt-tr-rl-arn"
   type      = "String"
   value     = aws_iam_role.github_trust_role.arn
   overwrite = true

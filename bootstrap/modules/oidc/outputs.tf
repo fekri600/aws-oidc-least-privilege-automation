@@ -6,3 +6,4 @@ output "trust_role_github" {
 output "debug_state_bucket_name" {
   value = var.state_bucket_name
 }
+

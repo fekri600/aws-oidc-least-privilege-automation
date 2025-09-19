@@ -29,6 +29,11 @@ variable "email_subscription" {
   type        = string
   description = "Email subscription"
 }
+
+variable "ci_role_arn" {
+  type        = string
+  description = "The ARN of the CI role for GitHub Actions"
+}
 variable "db_username" {
   type        = string
   description = "DB username"

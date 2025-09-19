@@ -28,10 +28,6 @@ variable "tags" {
   default = {}
 }
 
-variable "ci_role_arn" {
-  type    = string
-  default = null
-}
 variable "artifacts_prefix" {
   type    = string
   default = null
