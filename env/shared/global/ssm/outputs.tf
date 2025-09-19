@@ -38,3 +38,7 @@ output "rds_failover_code_hash" {
 output "artifacts_bucket_arn" {
   value = data.aws_ssm_parameter.artifacts_bucket_arn.value
 }
+
+output "ci_role_arn" {
+  value = data.aws_ssm_parameter.ci_role_arn.value
+}

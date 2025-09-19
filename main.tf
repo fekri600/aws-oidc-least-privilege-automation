@@ -97,7 +97,7 @@ module "iam" {
   artifacts_bucket_arn  = module.ssm.artifacts_bucket_arn
   artifacts_bucket_name = module.ssm.artifacts_bucket_name
   artifacts_prefix      = "lambda/"
-  ci_role_arn           = var.ci_role_arn
+  ci_role_arn           = module.ssm.ci_role_arn
 }
 
 

@@ -31,3 +31,12 @@ echo "TRAIL_ARN=${TRAIL_ARN}"
 aws cloudtrail describe-trails --region us-east-1
 aws cloudtrail start-logging --name org-trail --region us-east-1
 aws cloudtrail get-trail-status --name org-trail --region us-east-1
+
+
+
+JOB_ID="2a41f8a7-6b95-4a66-9144-333ba03c1bf9"
+aws accessanalyzer get-generated-policy \
+  --region us-east-1 \
+  --job-id "$JOB_ID" \
+  --include-resource-placeholders \
+  --output json > generated-policy.json
