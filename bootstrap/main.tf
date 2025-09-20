@@ -38,6 +38,7 @@ module "cloudtrail" {
   source = "./modules/cloudtrail"
   suffix = module.asw-data.account_id
   account_id = module.asw-data.account_id
+  region = module.asw-data.region
 }
 
 

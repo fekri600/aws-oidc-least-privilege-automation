@@ -10,7 +10,8 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
   bucket = aws_s3_bucket.cloudtrail_logs.id
   policy = templatefile("${path.module}/cloudtrail_bucket_policy.json", {
     aws_s3_bucket_cloudtrail_logs_arn = aws_s3_bucket.cloudtrail_logs.arn
-    data_aws_caller_identity_current_account_id = var.account_id
+    account_id = var.account_id
+    region = var.region
     aws_iam_role_aa_policy_gen_role_arn = aws_iam_role.aa_policy_gen_role.arn
   })
 }
@@ -21,6 +22,8 @@ resource "aws_cloudtrail" "main" {
   s3_bucket_name                = aws_s3_bucket.cloudtrail_logs.id
   is_multi_region_trail         = true
   include_global_service_events = true
+  
+  depends_on = [aws_s3_bucket_policy.cloudtrail]
 }
 
 # NEW role for Access Analyzer to assume

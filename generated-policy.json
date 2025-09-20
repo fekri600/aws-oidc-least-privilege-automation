@@ -1,0 +1,23 @@
+{
+    "jobDetails": {
+        "jobId": "2a41f8a7-6b95-4a66-9144-333ba03c1bf9",
+        "status": "IN_PROGRESS",
+        "startedOn": "2025-09-19T21:01:39+00:00"
+    },
+    "generatedPolicyResult": {
+        "properties": {
+            "principalArn": "arn:aws:iam::490004637046:role/github-ci-role",
+            "cloudTrailProperties": {
+                "trailProperties": [
+                    {
+                        "cloudTrailArn": "arn:aws:cloudtrail:us-east-1:490004637046:trail/org-trail",
+                        "regions": [],
+                        "allRegions": true
+                    }
+                ],
+                "startTime": "2025-09-18T00:00:00+00:00",
+                "endTime": "2025-09-19T15:00:00+00:00"
+            }
+        }
+    }
+}
