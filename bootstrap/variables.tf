@@ -27,8 +27,3 @@ variable "iam_policy_name" {
   description = "Name for the IAM policy attached to the GitHub Actions role"
   type        = string
 }
-
-variable "retention_days" {
-  description = "Retention days for the cloudtrail"
-  type        = number
-}

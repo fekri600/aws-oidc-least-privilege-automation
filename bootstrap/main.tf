@@ -43,7 +43,6 @@ module "oidc" {
 
 module "cloudtrail-lack" {
   source = "./modules/cloudtrail-lack"
-  retention_days = var.retention_days
 }
 
 
