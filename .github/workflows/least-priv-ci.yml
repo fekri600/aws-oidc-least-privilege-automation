@@ -12,6 +12,7 @@ permissions:
   id-token: write
   contents: write
   pull-requests: write
+  issues: write
 
 env:
   AWS_REGION: us-east-1
@@ -56,6 +57,7 @@ jobs:
       - name: Create PR with updated policy
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.LEAS_PREV_PR }}
           branch: chore/least-priv-${{ github.run_id }}
           title: "chore: update OIDC role policy from CloudTrail evidence"
           body: |
@@ -67,4 +69,6 @@ jobs:
           add-paths: |
             bootstrap/modules/oidc/policies/permission-policy.updated.json
             bootstrap/modules/oidc/policies/least-priv-report.json
+          commit-message: "chore: update OIDC role policy from CloudTrail evidence"
+          delete-branch: true
           
