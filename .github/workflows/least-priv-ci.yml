@@ -7,8 +7,6 @@ on:
         description: "Lookback window in hours"
         required: false
         default: "24"
-  schedule:
-    - cron: "0 6 * * *"   # daily at 06:00 UTC
 
 permissions:
   id-token: write
