@@ -27,6 +27,6 @@ data "external" "ipam_subnets" {
     public_count  = var.public_subnets_count
     private_count = var.private_subnets_count
   }
-  depends_on = [null_resource.vpc_allocated]
+  depends_on = [data.external.ipam_vpc]
 }
 

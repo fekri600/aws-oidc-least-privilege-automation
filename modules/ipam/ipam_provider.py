@@ -112,8 +112,25 @@ def main():
         # ─ Subnet Allocation ──────────────────────────────────────────────────
         if mode == "subnet":
             if vpc_key not in vpcs:
-                print(json.dumps({"error": f"VPC for '{vpc_key}' not allocated yet. Run resource_type='vpc' first."}), file=sys.stderr)
-                sys.exit(1)
+                # Try to allocate the VPC first if it doesn't exist
+                print(f"VPC '{vpc_key}' not found, attempting to allocate it first...", file=sys.stderr)
+                
+                # Allocate VPC
+                supernet = ipaddress.ip_network(BASE_POOL)
+                used = {entry["cidr"] for entry in vpcs.values()}
+                cidr = None
+                for c in supernet.subnets(new_prefix=VPC_PREFIX):
+                    if c not in used:
+                        cidr = c
+                        vpcs[vpc_key] = {"cidr": cidr}
+                        break
+                if cidr is None:
+                    print(json.dumps({"error": "no free /16s in 10.0.0.0/8"}), file=sys.stderr)
+                    sys.exit(1)
+                
+                # Save the VPC allocation
+                atomic_save_json(STATE_FILE, state)
+                print(f"VPC '{vpc_key}' allocated with CIDR {cidr}", file=sys.stderr)
 
             vpc_cidr = vpcs[vpc_key]["cidr"]
             pub_count  = int(q.get("public_count", 0))
