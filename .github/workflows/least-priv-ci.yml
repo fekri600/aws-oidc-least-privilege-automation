@@ -56,7 +56,7 @@ jobs:
       - name: Create PR with updated policy
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.LEAS_PREV_PR }}
           branch: chore/least-priv-${{ github.run_id }}
           title: "chore: update OIDC role policy from CloudTrail evidence"
           body: |
