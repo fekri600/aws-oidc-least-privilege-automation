@@ -40,11 +40,20 @@ def wait_results(client, qid, timeout=60):
 def parse_actions(res):
     actions = set()
     for row in res.get("QueryResultRows", []):
-        vals = [c.get("String", "") for c in row.get("Row", {}).get("Data", [])]
-        if len(vals) >= 2:
-            event_source, event_name = vals[0], vals[1]
-            if event_source and event_name:
-                actions.add(to_actions(event_source, event_name))
+        # Parse the CloudTrail Lake result format: [{'eventSource': 'value'}, {'eventName': 'value'}]
+        event_source = ""
+        event_name = ""
+        
+        for item in row:
+            if 'eventSource' in item:
+                event_source = item['eventSource']
+            elif 'eventName' in item:
+                event_name = item['eventName']
+        
+        if event_source and event_name:
+            actions.add(to_actions(event_source, event_name))
+            print(f"Added action: {event_source}:{event_name}")
+    
     return sorted(actions)
 
 def build_policy(needed_actions):
