@@ -49,15 +49,14 @@ jobs:
           python services/query-ct-lack/ci_least_priv.py \
             --eds-arn "$EDS_ARN" \
             --role-arn "$ROLE_ARN" \
-            --policy-in bootstrap/modules/oidc/policies/permission-policy.json \
-            --policy-out bootstrap/modules/oidc/policies/permission-policy.updated.json \
+            --policy-path bootstrap/modules/oidc/policies/permission-policy.json \
             --report-out bootstrap/modules/oidc/policies/least-priv-report.json \
             --lookback-hours "${LOOKBACK_HOURS}"
 
       - name: Create PR with updated policy
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.LEAS_PREV_PR }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/least-priv-${{ github.run_id }}
           title: "chore: update OIDC role policy from CloudTrail evidence"
           body: |
@@ -67,7 +66,7 @@ jobs:
             Report generated at:
             `bootstrap/modules/oidc/policies/least-priv-report.json`
           add-paths: |
-            bootstrap/modules/oidc/policies/permission-policy.updated.json
+            bootstrap/modules/oidc/policies/permission-policy.json
             bootstrap/modules/oidc/policies/least-priv-report.json
           commit-message: "chore: update OIDC role policy from CloudTrail evidence"
           delete-branch: true
