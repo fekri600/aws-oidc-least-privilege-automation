@@ -1,0 +1,71 @@
+name: Self-Healing Least Privilege
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "Lookback window in hours"
+        required: false
+        default: "24"
+
+
+        permissions:
+            id-token: write
+            contents: write
+            pull-requests: write
+          
+          env:
+            AWS_REGION: us-east-1
+            ROLE_ARN: ${{ secrets.AWS_OIDC_ROLE_ARN }}   # OIDC role used by this workflow
+            EDS_ARN:  ${{ secrets.CTS_LAKE_EDS_ARN }}    # CloudTrail Lake Event Data Store ARN
+          
+          jobs:
+            least-priv:
+              runs-on: ubuntu-latest
+              steps:
+                - name: Checkout repository
+                  uses: actions/checkout@v4
+          
+                - name: Configure AWS credentials via OIDC
+                  uses: aws-actions/configure-aws-credentials@v4
+                  with:
+                    role-to-assume: ${{ env.ROLE_ARN }}
+                    aws-region: ${{ env.AWS_REGION }}
+          
+                - name: Set up Python
+                  uses: actions/setup-python@v5
+                  with:
+                    python-version: "3.11"
+          
+                - name: Install dependencies
+                  run: pip install boto3 pydantic
+          
+                - name: Run least-privilege script
+                  env:
+                    EDS_ARN: ${{ env.EDS_ARN }}
+                    ROLE_ARN: ${{ env.ROLE_ARN }}
+                    LOOKBACK_HOURS: ${{ github.event.inputs.hours || '24' }}
+                  run: |
+                    python services/query-ct-lack/ci_least_priv.py \
+                      --eds-arn "$EDS_ARN" \
+                      --role-arn "$ROLE_ARN" \
+                      --policy-in bootstrap/modules/oidc/policies/permission-policy.json \
+                      --policy-out bootstrap/modules/oidc/policies/permission-policy.updated.json \
+                      --report-out bootstrap/modules/oidc/policies/least-priv-report.json \
+                      --lookback-hours "${LOOKBACK_HOURS}"
+          
+                - name: Create PR with updated policy
+                  uses: peter-evans/create-pull-request@v6
+                  with:
+                    branch: chore/least-priv-${{ github.run_id }}
+                    title: "chore: update OIDC role policy from CloudTrail evidence"
+                    body: |
+                      This PR tightens the GitHub OIDC role policy (`permission-policy.json`)
+                      based on actions actually used in the last ${{ github.event.inputs.hours || '24' }}h.
+          
+                      Report generated at:
+                      `bootstrap/modules/oidc/policies/least-priv-report.json`
+                    add-paths: |
+                      bootstrap/modules/oidc/policies/permission-policy.updated.json
+                      bootstrap/modules/oidc/policies/least-priv-report.json
+          
