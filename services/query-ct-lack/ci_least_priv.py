@@ -20,12 +20,12 @@ def start_query(client, eds, role_arn, start_time, end_time):
       AND errorCode IS NULL
     GROUP BY eventSource, eventName
     """
-    r = client.start_query(QueryStatement=q)
+    r = client.start_query(QueryStatement=q, EventDataStore=eds)
     return r["QueryId"]
 
-def wait_results(client, qid):
+def wait_results(client, qid, eds):
     while True:
-        r = client.get_query_results(QueryId=qid)
+        r = client.get_query_results(QueryId=qid, EventDataStore=eds)
         if r["Status"] in ("FINISHED", "FAILED", "CANCELLED"):
             return r
         time.sleep(2)
@@ -83,7 +83,7 @@ def main():
 
     client = boto3.client("cloudtrail-data")  # CloudTrail Lake data-plane
     qid = start_query(client, args.eds_arn, args.role_arn, start_s, end_s)
-    res = wait_results(client, qid)
+    res = wait_results(client, qid, args.eds_arn)
     if res["Status"] != "FINISHED":
         raise SystemExit(f"Query failed: {res['Status']}")
 
