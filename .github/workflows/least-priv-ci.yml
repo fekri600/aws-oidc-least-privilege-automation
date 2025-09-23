@@ -50,7 +50,6 @@ jobs:
             --eds-arn "$EDS_ARN" \
             --role-arn "$ROLE_ARN" \
             --policy-path bootstrap/modules/oidc/policies/permission-policy.json \
-            --report-out bootstrap/modules/oidc/policies/least-priv-report.json \
             --lookback-hours "${LOOKBACK_HOURS}"
 
       - name: Create PR with updated policy
@@ -62,12 +61,8 @@ jobs:
           body: |
             This PR tightens the GitHub OIDC role policy (`permission-policy.json`)
             based on actions actually used in the last ${{ github.event.inputs.hours || '24' }}h.
-
-            Report generated at:
-            `bootstrap/modules/oidc/policies/least-priv-report.json`
           add-paths: |
             bootstrap/modules/oidc/policies/permission-policy.json
-            bootstrap/modules/oidc/policies/least-priv-report.json
           commit-message: "chore: update OIDC role policy from CloudTrail evidence"
           delete-branch: true
           

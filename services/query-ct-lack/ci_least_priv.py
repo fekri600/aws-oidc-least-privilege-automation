@@ -73,7 +73,6 @@ def main():
     ap.add_argument("--role-arn", required=True)
     ap.add_argument("--policy-path", required=True,
                     help="Path to bootstrap/modules/oidc/policies/permission-policy.json")
-    ap.add_argument("--report-out", required=True)
     ap.add_argument("--lookback-hours", type=int, default=24)
     args = ap.parse_args()
 
@@ -102,15 +101,6 @@ def main():
         json.dump(new_doc, f, indent=2)
     print(f"Policy overwritten at {args.policy_path}")
 
-    # Write report for visibility
-    report = {
-        "window_utc": {"start": start_s, "end": end_s},
-        "used_actions": used_actions,
-        "policy_path": args.policy_path
-    }
-    with open(args.report_out, "w") as f:
-        json.dump(report, f, indent=2)
-    print(f"Report written to {args.report_out}")
 
 if __name__ == "__main__":
     main()
