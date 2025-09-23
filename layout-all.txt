@@ -1,4 +1,5 @@
 .
+├── backend.tf
 ├── bootstrap
 │   ├── bootstrap_diagram.png
 │   ├── data
@@ -16,20 +17,194 @@
 │   │   │   ├── main.tf
 │   │   │   ├── outputs.tf
 │   │   │   └── variables.tf
-│   │   ├── cloudtrail-lack
+│   │   ├── cloudtrail
+│   │   │   ├── access_analyzer_assume_role_policy.json
+│   │   │   ├── access_analyzer_role_policy.json
+│   │   │   ├── cloudtrail_bucket_policy.json
 │   │   │   ├── main.tf
 │   │   │   └── variables.tf
+│   │   ├── cloudtrail-lack
+│   │   │   ├── main.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   ├── explorer
+│   │   │   ├── main.tf
+│   │   │   └── resource-explorer-policy.json
 │   │   └── oidc
 │   │       ├── locals.tf
 │   │       ├── main.tf
 │   │       ├── outputs.tf
 │   │       ├── policies
-│   │       │   ├── permission-policy.json (this is the policy that we need to update and to use )
+│   │       │   ├── permission-policy.json
 │   │       │   └── trust-policy.json
 │   │       └── variables.tf
 │   ├── outputs.tf
 │   ├── providers.tf
 │   ├── random.tf
 │   ├── terraform.auto.tfvars
+│   ├── terraform.tfstate
+│   ├── terraform.tfstate.backup
 │   ├── variables.tf
 │   └── version.tf
+├── cloudtrail-details.json
+├── cmd
+├── env
+│   ├── prod
+│   │   ├── us-east-1
+│   │   │   ├── compute
+│   │   │   │   ├── data.tf
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   ├── state_machine.json
+│   │   │   │   └── variables.tf
+│   │   │   ├── database
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   └── variables.tf
+│   │   │   ├── dns
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   └── variables.tf
+│   │   │   ├── monitoring
+│   │   │   │   ├── event_pattern.json
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   └── variables.tf
+│   │   │   ├── networking
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   ├── variables.tf
+│   │   │   │   └── version.tf
+│   │   │   ├── queuing
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   └── variables.tf
+│   │   │   └── security
+│   │   │       ├── main.tf
+│   │   │       ├── outputs.tf
+│   │   │       └── variables.tf
+│   │   └── us-west-1
+│   │       ├── dns
+│   │       │   ├── main.tf
+│   │       │   ├── outputs.tf
+│   │       │   ├── variables.tf
+│   │       │   └── version.tf
+│   │       └── networking
+│   │           ├── main.tf
+│   │           ├── outputs.tf
+│   │           ├── variables.tf
+│   │           └── version.tf
+│   └── shared
+│       └── global
+│           ├── iam
+│           │   ├── locals.tf
+│           │   ├── main.tf
+│           │   ├── outputs.tf
+│           │   ├── policies
+│           │   │   ├── artifacts_bucket_policy.json
+│           │   │   ├── lambda_assume_role_policy.json
+│           │   │   ├── lambda_failover_policy.json
+│           │   │   ├── lambda_snapshot_policy.json
+│           │   │   ├── step_functions_assume_role_policy.json
+│           │   │   └── step_functions_policy.json
+│           │   └── variables.tf
+│           ├── ssm
+│           │   ├── data.tf
+│           │   ├── main.tf
+│           │   ├── outputs.tf
+│           │   └── variables.tf
+│           └── storage
+│               ├── backend.tf
+│               ├── main.tf
+│               ├── outputs.tf
+│               ├── providers.tf
+│               └── version.tf
+├── generated-policy.json
+├── layout-all.txt
+├── LICENSE
+├── locals.tf
+├── main.tf
+├── Makefile
+├── modules
+│   ├── db-subnet-group
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── eventbridge
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── ipam
+│   │   ├── cleanup.tf
+│   │   ├── ipam_provider.py
+│   │   ├── ipam_state.json
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── lambda
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── rds
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── route53-record
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── route53-zone
+│   │   ├── mian.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── s3
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── security-group
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── sns
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── ssm
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── step-functions
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── subnet
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── varaibles.tf
+│   └── vpc
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── varaibles.tf
+├── outputs.tf
+├── providers.tf
+├── README.md
+├── services
+│   ├── query-ct-lack
+│   │   └── ci_least_priv.py
+│   ├── rds-failover
+│   │   ├── dist
+│   │   └── src
+│   │       ├── build.sh
+│   │       ├── handler.py
+│   │       └── requirements.txt
+│   └── rds-snapshot
+│       ├── dist
+│       └── src
+│           ├── build.sh
+│           ├── handler.py
+│           └── requirements.txt
+├── terraform.auto.tfvars
+├── variables.tf
+└── version.tf
+
+54 directories, 154 files
