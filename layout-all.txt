@@ -1,35 +1,5 @@
-.
-├── backend.tf
+
 ├── bootstrap
-│   ├── bootstrap_diagram.png
-│   ├── data
-│   │   ├── asw-data
-│   │   │   ├── data.tf
-│   │   │   └── outputs.tf
-│   │   └── repo-data
-│   │       ├── data.tf
-│   │       ├── get_repo.sh
-│   │       └── outputs.tf
-│   ├── main.tf
-│   ├── modules
-│   │   ├── backend-bucket
-│   │   │   ├── generate-backend-file.sh
-│   │   │   ├── main.tf
-│   │   │   ├── outputs.tf
-│   │   │   └── variables.tf
-│   │   ├── cloudtrail
-│   │   │   ├── access_analyzer_assume_role_policy.json
-│   │   │   ├── access_analyzer_role_policy.json
-│   │   │   ├── cloudtrail_bucket_policy.json
-│   │   │   ├── main.tf
-│   │   │   └── variables.tf
-│   │   ├── cloudtrail-lack
-│   │   │   ├── main.tf
-│   │   │   ├── outputs.tf
-│   │   │   └── variables.tf
-│   │   ├── explorer
-│   │   │   ├── main.tf
-│   │   │   └── resource-explorer-policy.json
 │   │   └── oidc
 │   │       ├── locals.tf
 │   │       ├── main.tf
