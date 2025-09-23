@@ -112,21 +112,19 @@ def main():
 
     used_actions = set()
     for row in res.get("QueryResultRows", []):
-        # Debug the row structure
-        print(f"Row structure: {row}")
+        # Parse the CloudTrail Lake result format: [{'eventSource': 'value'}, {'eventName': 'value'}]
+        event_source = ""
+        event_name = ""
         
-        # Try different parsing approaches
-        if "Row" in row and "Data" in row["Row"]:
-            vals = [c.get("String", "") for c in row["Row"]["Data"]]
-        elif "Data" in row:
-            vals = [c.get("String", "") for c in row["Data"]]
-        else:
-            # Direct list access
-            vals = [c.get("String", "") for c in row]
-            
-        print(f"Parsed values: {vals}")
-        if len(vals) >= 2:
-            used_actions.add(to_actions(vals[0], vals[1]))
+        for item in row:
+            if 'eventSource' in item:
+                event_source = item['eventSource']
+            elif 'eventName' in item:
+                event_name = item['eventName']
+        
+        if event_source and event_name:
+            used_actions.add(to_actions(event_source, event_name))
+            print(f"Added action: {event_source}:{event_name}")
 
     base_doc, current_actions = load_policy_actions(args.policy_in)
     missing = sorted(used_actions - current_actions)
