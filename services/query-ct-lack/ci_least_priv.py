@@ -112,7 +112,19 @@ def main():
 
     used_actions = set()
     for row in res.get("QueryResultRows", []):
-        vals = [c.get("String", "") for c in row["Row"]["Data"]]
+        # Debug the row structure
+        print(f"Row structure: {row}")
+        
+        # Try different parsing approaches
+        if "Row" in row and "Data" in row["Row"]:
+            vals = [c.get("String", "") for c in row["Row"]["Data"]]
+        elif "Data" in row:
+            vals = [c.get("String", "") for c in row["Data"]]
+        else:
+            # Direct list access
+            vals = [c.get("String", "") for c in row]
+            
+        print(f"Parsed values: {vals}")
         if len(vals) >= 2:
             used_actions.add(to_actions(vals[0], vals[1]))
 
