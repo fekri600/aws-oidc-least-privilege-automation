@@ -15,8 +15,8 @@ apply-bt:
 	@echo " Setting GitHub secrets..."
 	gh secret set AWS_OIDC_ROLE_ARN --body "$$(terraform -chdir=bootstrap output -raw trust_role_github)"
 
-	@echo " Setting AWS_CTS_LAKE_EDS_ARN..."
-	gh secret set AWS_CTS_LAKE_EDS_ARN --body "$$(terraform -chdir=bootstrap output -raw cloudtrail_event_data_store_arn)"
+	@echo " Setting CTS_LAKE_EDS_ARN..."
+	gh secret set CTS_LAKE_EDS_ARN --body "$$(terraform -chdir=bootstrap output -raw cloudtrail_event_data_store_arn)"
 
 	@echo " Saving CI role ARN to SSM parameter..."
 	aws ssm put-parameter \
