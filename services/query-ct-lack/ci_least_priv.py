@@ -16,7 +16,7 @@ def start_query(client, eds, role_arn, start_time, end_time):
     SELECT eventSource, eventName
     FROM {eds}
     WHERE userIdentity.sessionContext.sessionIssuer.arn = '{role_arn}'
-      AND eventTime BETWEEN from_iso8601_timestamp('{start_time}') AND from_iso8601_timestamp('{end_time}')
+      AND eventTime BETWEEN '{start_time}' AND '{end_time}'
       AND errorCode IS NULL
     GROUP BY eventSource, eventName
     """
@@ -81,7 +81,7 @@ def main():
     start_s = start.replace(microsecond=0).isoformat()+"Z"
     end_s   = end.replace(microsecond=0).isoformat()+"Z"
 
-    client = boto3.client("cloudtrail-data")  # CloudTrail Lake data-plane
+    client = boto3.client("cloudtrail")  # CloudTrail Lake uses cloudtrail client
     qid = start_query(client, args.eds_arn, args.role_arn, start_s, end_s)
     res = wait_results(client, qid, args.eds_arn)
     if res["Status"] != "FINISHED":
