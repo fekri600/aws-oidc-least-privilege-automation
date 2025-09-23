@@ -17,3 +17,7 @@ output "trust_role_github" {
 output "debug_state_bucket_name" {
   value = module.oidc.debug_state_bucket_name
 }
+
+output "cloudtrail_event_data_store_arn" {
+  value = module.cloudtrail-lack.cloudtrail_event_data_store_arn
+}

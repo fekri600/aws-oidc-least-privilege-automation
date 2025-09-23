@@ -34,11 +34,16 @@ module "oidc" {
   
 # }
 
-module "cloudtrail" {
-  source = "./modules/cloudtrail"
-  suffix = module.asw-data.account_id
-  account_id = module.asw-data.account_id
-  region = module.asw-data.region
+# module "cloudtrail" {
+#   source = "./modules/cloudtrail"
+#   suffix = module.asw-data.account_id
+#   account_id = module.asw-data.account_id
+#   region = module.asw-data.region
+# }
+
+module "cloudtrail-lack" {
+  source = "./modules/cloudtrail-lack"
+  retention_days = var.retention_days
 }
 
 

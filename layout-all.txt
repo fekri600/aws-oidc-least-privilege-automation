@@ -1,313 +1,35 @@
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "all",
-      "Effect": "Allow",
-      "Action": ["*"],
-      "Resource": "*"
-    },
-    {
-      "Sid": "S3StateManagement",
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket",
-        "s3:GetBucketAcl",
-        "s3:PutObjectAcl",
-        "s3:CreateBucket",
-        "S3:PutBucketPolicy"
-      ],
-      "Resource": [
-        "arn:aws:s3:::${state_bucket_name}",
-        "arn:aws:s3:::${state_bucket_name}/terraform/state/*"
-      ]
-    },
-    {
-			"Action": [
-				"s3:GetObject",
-				"s3:PutObject",
-				"s3:DeleteObject",
-				"s3:ListBucket",
-				"s3:GetBucketAcl",
-				"s3:PutObjectAcl",
-				"s3:CreateBucket",
-				"s3:PutBucketVersioning",
-				"s3:PutBucketTagging",
-				"s3:GetBucketTagging",
-				"s3:PutBucketOwnershipControls",
-				"s3:PutBucketPolicy",
-				"s3:DeleteBucketPolicy",
-				"s3:GetBucketLocation",
-				"s3:GetBucketPolicy",
-				"s3:GetBucketPolicyStatus",
-				"s3:GetBucketVersioning",
-				"s3:GetEncryptionConfiguration",
-				"s3:GetBucketCORS",
-				"s3:GetBucketWebsite",
-				"s3:GetAccelerateConfiguration",
-				"s3:GetBucketRequestPayment",
-				"s3:PutBucketRequestPayment",
-				"s3:GetBucketLogging",
-				"s3:PutBucketLogging",
-				"s3:GetLifecycleConfiguration",
-				"s3:PutLifecycleConfiguration",
-				"s3:GetReplicationConfiguration",
-				"s3:PutReplicationConfiguration",
-				"s3:GetBucketObjectLockConfiguration",
-				"s3:PutBucketObjectLockConfiguration",
-				"s3:DeleteBucket",
-				"s3:GetBucketOwnershipControls",
-				"s3:PutBucketOwnershipControls",
-				"s3:PutBucketPublicAccessBlock",
-				"s3:PutEncryptionConfiguration",
-				"s3:GetBucketPublicAccessBlock",
-				"s3:GetEncryptionConfiguration",
-        "s3:PutBucketPolicy"
-			],
-			"Effect": "Allow",
-			"Resource": [
-				"*"
-			],
-			"Sid": "S3ArtifactManagement"
-		},
-    {
-      "Sid": "DynamoDBManagement",
-      "Effect": "Allow",
-      "Action": [
-        "dynamodb:CreateTable",
-        "dynamodb:DeleteTable",
-        "dynamodb:UpdateTable",
-        "dynamodb:DescribeTable",
-        "dynamodb:ListTables",
-        "dynamodb:PutItem",
-        "dynamodb:GetItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:Scan",
-        "dynamodb:Query"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "EC2Management",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:CreateVpc",
-        "ec2:CreateSubnet",
-        "ec2:CreateRouteTable",
-        "ec2:CreateInternetGateway",
-        "ec2:CreateTags",
-        "ec2:DescribeVpcs",
-        "ec2:DescribeVpcAttribute",
-        "ec2:DeleteVpc",
-        "ec2:ModifyVpcAttribute",
-        "ec2:CreateSecurityGroup",
-        "ec2:AttachInternetGateway",
-        "ec2:DescribeInternetGateways",
-        "ec2:DeleteInternetGateway",
-        "ec2:DetachInternetGateway",
-        "ec2:CreateRoute",
-        "ec2:DeleteRoute",
-        "ec2:ReplaceRoute",
-        "ec2:DeleteRouteTable",
-        "ec2:DescribeRouteTables",
-        "ec2:ReplaceRouteTableAssociation",
-        "ec2:AssociateRouteTable",
-        "ec2:DisassociateRouteTable",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DeleteSecurityGroup",
-        "ec2:DescribeSubnets",
-        "ec2:DescribeSecurityGroupRules",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:RevokeSecurityGroupEgress",
-        "ec2:CreateNetworkInterface",
-        "ec2:DeleteNetworkInterface",
-        "ec2:DescribeNetworkInterfaceAttribute",
-        "ec2:ModifyNetworkInterfaceAttribute",
-        "ec2:DescribeNetworkInterfaces",
-        "ec2:DetachNetworkInterface",
-        "ec2:AttachNetworkInterface",
-        "ec2:DeleteNetworkInterface",
-        "ec2:DeleteSubnet",
-        "ec2:AuthorizeSecurityGroupEgress",
-        "ec2:AuthorizeSecurityGroupIngress",
-        "ec2:RevokeSecurityGroupIngress",
-        "ec2:RevokeSecurityGroupEgress",
-        "ec2:DescribeSecurityGroupRules"
-
-
-
-
-
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "SSMParameter",
-      "Effect": "Allow",
-      "Action": [
-        "ssm:GetParameter",
-        "ssm:GetParameters",
-        "ssm:GetParameterHistory",
-        "ssm:DescribeParameters",
-        "ssm:PutParameter",
-        "ssm:DescribeParameters",
-        "ssm:ListTagsForResource"
-      ],
-      "Resource": "arn:aws:ssm:us-east-1:490004637046:*"
-    },
-
-    {
-      "Sid": "IAMManagement",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy",
-        "iam:PutRolePolicy",
-        "iam:DeleteRolePolicy",
-        "iam:GetRole",
-        "iam:PassRole",
-        "iam:ListRolePolicies",
-        "iam:ListAttachedRolePolicies",
-        "iam:ListInstanceProfilesForRole",
-        "iam:CreateInstanceProfile",
-        "iam:GetInstanceProfile",
-        "iam:DeleteInstanceProfile",
-        "iam:AddRoleToInstanceProfile",
-        "iam:GetRolePolicy",
-        "iam:CreateRole"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "RDSManagement",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBInstance",
-        "rds:DeleteDBInstance",
-        "rds:ModifyDBInstance",
-        "rds:DescribeDBInstances",
-        "rds:CreateDBSubnetGroup",
-        "rds:DeleteDBSubnetGroup",
-        "rds:DescribeDBSubnetGroups",
-        "rds:ListTagsForResource",
-        "rds:AddTagsToResource"
-      ],
-      "Resource": "*"
-    },
-    
-    {
-      "Sid": "SNSManagement",
-      "Effect": "Allow",
-      "Action": [
-        "sns:CreateTopic",
-        "sns:DeleteTopic",
-        "sns:Publish",
-        "sns:Subscribe",
-        "sns:Unsubscribe",
-        "sns:GetTopicAttributes",
-        "sns:SetTopicAttributes",
-        "sns:ListTagsForResource",
-        "sns:GetSubscriptionAttributes"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "CloudWatchLogging",
-      "Effect": "Allow",
-      "Action": [
-        "cloudwatch:PutMetricData",
-        "cloudwatch:GetMetricData",
-        "cloudwatch:GetMetricStatistics",
-        "cloudwatch:ListMetrics",
-        "cloudwatch:PutDashboard",
-        "cloudwatch:GetDashboard",
-        "cloudwatch:PutMetricAlarm",
-        "cloudwatch:DescribeAlarms",
-        "cloudwatch:ListTagsForResource",
-        "cloudwatch:DeleteAlarms",
-        "logs:DeleteLogGroup",
-        "cloudwatch:DeleteDashboards",
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams",
-        "logs:TagResource",
-        "logs:PutRetentionPolicy",
-        "logs:PutMetricFilter",
-        "logs:ListTagsForResource",
-        "logs:DescribeMetricFilters",
-        "logs:DeleteMetricFilter",
-        "events:PutRule",
-        "events:DescribeRule", 
-        "logs:CreateLogGroup",
-        "events:ListTagsForResource",
-        "events:DeleteRule",
-        "events:ListTargetsByRule",
-        "events:PutTargets"
-      ],
-      "Resource": "*"
-    },
-    {
-        "Action": [
-            "route53:CreateHostedZone",
-            "route53:DeleteHostedZone",
-            "route53:GetHostedZone",
-            "route53:ListHostedZones",
-            "route53:ListTagsForResource",
-            "route53:ListResourceRecordSets",
-            "route53:GetChange",
-            "route53:ChangeResourceRecordSets"
-        ],
-        "Effect": "Allow",
-        "Resource": "*",
-        "Sid": "Route53Management"
-    },
-    {
-        "Action": [
-            "lambda:CreateFunction",
-            "lambda:DeleteFunction",
-            "lambda:UpdateFunctionCode",
-            "lambda:UpdateFunctionConfiguration",
-            "lambda:GetFunction",
-            "lambda:ListFunctions",
-            "lambda:InvokeFunction",
-            "lambda:ListVersionsByFunction",
-            "lambda:GetFunctionCodeSigningConfig",
-            "lambda:GetPolicy",
-            "lambda:AddPermission"
-        ],
-        "Effect": "Allow",
-        "Resource": "*",
-        "Sid": "LambdaManagement"
-    },
-    {
-        "Sid": "StepFunctionsManagement",
-        "Effect": "Allow",
-        "Action": [
-            "states:ValidateStateMachineDefinition",
-            "states:DescribeStateMachineForExecution",
-            "states:ListExecutions",
-            "states:StartExecution",
-            "states:DescribeExecution",
-            "states:GetExecutionHistory",
-				    "states:CreateStateMachine",
-            "states:TagResource",
-            "states:UntagResource",
-            "states:UpdateStateMachine",
-            "states:ListStateMachines",
-            "states:DeleteStateMachine"
-        ],
-        "Resource": "*"
-    }
-  ]
-}
-
-
-
-
+.
+├── bootstrap
+│   ├── bootstrap_diagram.png
+│   ├── data
+│   │   ├── asw-data
+│   │   │   ├── data.tf
+│   │   │   └── outputs.tf
+│   │   └── repo-data
+│   │       ├── data.tf
+│   │       ├── get_repo.sh
+│   │       └── outputs.tf
+│   ├── main.tf
+│   ├── modules
+│   │   ├── backend-bucket
+│   │   │   ├── generate-backend-file.sh
+│   │   │   ├── main.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   ├── cloudtrail-lack
+│   │   │   ├── main.tf
+│   │   │   └── variables.tf
+│   │   └── oidc
+│   │       ├── locals.tf
+│   │       ├── main.tf
+│   │       ├── outputs.tf
+│   │       ├── policies
+│   │       │   ├── permission-policy.json (this is the policy that we need to update and to use )
+│   │       │   └── trust-policy.json
+│   │       └── variables.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   ├── random.tf
+│   ├── terraform.auto.tfvars
+│   ├── variables.tf
+│   └── version.tf

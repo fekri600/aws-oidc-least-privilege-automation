@@ -1,8 +1,8 @@
 {
     "jobDetails": {
-        "jobId": "2a41f8a7-6b95-4a66-9144-333ba03c1bf9",
+        "jobId": "ac0bc21d-1efc-4d81-b408-11d5a45400db",
         "status": "IN_PROGRESS",
-        "startedOn": "2025-09-19T21:01:39+00:00"
+        "startedOn": "2025-09-20T16:04:16+00:00"
     },
     "generatedPolicyResult": {
         "properties": {
@@ -15,8 +15,8 @@
                         "allRegions": true
                     }
                 ],
-                "startTime": "2025-09-18T00:00:00+00:00",
-                "endTime": "2025-09-19T15:00:00+00:00"
+                "startTime": "2025-09-20T14:00:00+00:00",
+                "endTime": "2025-09-20T15:40:00+00:00"
             }
         }
     }

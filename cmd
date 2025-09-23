@@ -34,7 +34,13 @@ aws cloudtrail get-trail-status --name org-trail --region us-east-1
 
 
 
-JOB_ID="2a41f8a7-6b95-4a66-9144-333ba03c1bf9"
+aws accessanalyzer start-policy-generation \
+  --region us-east-1 \
+  --policy-generation-details '{"principalArn":"arn:aws:iam::490004637046:role/github-ci-role"}' \
+  --cloud-trail-details file://cloudtrail-details.json
+
+
+JOB_ID="ac0bc21d-1efc-4d81-b408-11d5a45400db"
 aws accessanalyzer get-generated-policy \
   --region us-east-1 \
   --job-id "$JOB_ID" \
