@@ -18,7 +18,7 @@ def start_query(client, eds, role_arn, start_time, end_time):
     SELECT eventSource, eventName
     FROM {eds_id}
     WHERE userIdentity.sessionContext.sessionIssuer.arn = '{role_arn}'
-      AND eventTime BETWEEN '{start_time}' AND '{end_time}'
+      AND eventTime BETWEEN from_iso8601_timestamp('{start_time}') AND from_iso8601_timestamp('{end_time}')
       AND errorCode IS NULL
     GROUP BY eventSource, eventName
     """
