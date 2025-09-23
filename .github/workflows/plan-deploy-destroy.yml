@@ -1,0 +1,119 @@
+name: terraform
+
+on:
+  # Auto-plan immediately after build-lambda-artifacts succeeds
+  workflow_run:
+    workflows: ["build-lambda-artifacts"]
+    types: [completed]
+
+  # Manual run: choose Deploy or Destroy
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "What do you want to do?"
+        type: choice
+        options: ["deploy", "destroy"]
+        default: "deploy"
+        required: true
+      commit_sha:
+        description: "Commit SHA to use (defaults to current)"
+        required: false
+        type: string
+      destroy_confirm:
+        description: "Type EXACTLY: DESTROY (only required for destroy)"
+        required: false
+        type: string
+
+jobs:
+  plan:
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy')
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read, actions: read }
+    steps:
+      - name: Checkout repo at triggering SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-tf-plan
+          aws-region: us-east-1
+
+      - name: terraform init
+        run: terraform init -input=false -upgrade
+      - name: terraform validate
+        run: terraform validate
+      - name: terraform plan
+        run: terraform plan -out=tfplan.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: tfplan.bin
+
+  deploy:
+    # manual trigger but only after plan succeeded
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'deploy'
+    needs: plan
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read, actions: read }
+    env:
+      AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-tf-apply
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: .
+
+      - name: terraform init
+        run: |
+          terraform init -input=false -upgrade
+          terraform validate
+
+      - name: Apply Terraform plan
+        run: terraform apply -auto-approve tfplan.bin
+
+
+  # Manual DESTROY job
+  destroy:
+    if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' && inputs.destroy_confirm == 'DESTROY'
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read, actions: read }
+    env:
+      AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.12.2 }
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-tf-destroy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init & destroy
+        run: |
+          terraform init -upgrade
+          terraform destroy -auto-approve
+
+
