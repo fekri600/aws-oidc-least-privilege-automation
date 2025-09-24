@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "tf-rds-cross-region-dr-state-c19ed595"
+    bucket         = "aws-ci-least-privilege-automation-state-0534b6fb"
     key            = "terraform.tfstate"
     region         = "us-east-1"
     use_lockfile   = true
