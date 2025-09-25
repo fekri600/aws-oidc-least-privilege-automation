@@ -11,12 +11,13 @@ def start_query(client, eds, role_arn, start_time, end_time):
     # Extract Event Data Store ID (arn:aws:cloudtrail:region:account:eventdatastore/uuid)
     eds_id = eds.split('/')[-1] if '/' in eds else eds
     q = f"""
-    SELECT eventSource, eventName, resources
+    SELECT eventSource, eventName
     FROM {eds_id}
     WHERE userIdentity.sessionContext.sessionIssuer.arn = '{role_arn}'
       AND eventTime BETWEEN from_iso8601_timestamp('{start_time}') 
                         AND from_iso8601_timestamp('{end_time}')
       AND errorCode IS NULL
+    GROUP BY eventSource, eventName
     """
     print(f"Running query on Event Data Store: {eds_id}")
     r = client.start_query(QueryStatement=q)
@@ -73,8 +74,6 @@ def main():
     ap.add_argument("--policy-path", required=True,
                     help="Path to bootstrap/modules/oidc/policies/permission-policy.json")
     ap.add_argument("--lookback-hours", type=int, default=24)
-    ap.add_argument("--raw-output", 
-                    help="Optional path to save raw query results as JSON file for review")
     args = ap.parse_args()
 
     end = dt.datetime.utcnow()
@@ -92,25 +91,6 @@ def main():
     res = wait_results(client, qid)
     if res["QueryStatus"] != "FINISHED":
         raise SystemExit(f"Query failed: {res['QueryStatus']}")
-
-    # Save raw query results to JSON file if requested
-    if args.raw_output:
-        raw_data = {
-            "query_metadata": {
-                "query_id": qid,
-                "eds_arn": args.eds_arn,
-                "role_arn": args.role_arn,
-                "start_time": start_s,
-                "end_time": end_s,
-                "lookback_hours": args.lookback_hours,
-                "query_status": res["QueryStatus"],
-                "timestamp": dt.datetime.utcnow().isoformat() + "Z"
-            },
-            "query_results": res
-        }
-        with open(args.raw_output, "w") as f:
-            json.dump(raw_data, f, indent=2)
-        print(f"Raw query results saved to {args.raw_output}")
 
     used_actions = parse_actions(res)
     print(f"Discovered {len(used_actions)} actions: {used_actions}")
