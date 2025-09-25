@@ -2,9 +2,33 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "all",
+      "Sid": "LeastPrivAuto",
       "Effect": "Allow",
-      "Action": ["*"],
+      "Action": [
+        "cloudtrail:GetQueryResults",
+        "cloudtrail:StartQuery",
+        "kms:Decrypt",
+        "s3:CreateBucket",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketAcl",
+        "s3:GetBucketEncryption",
+        "s3:GetBucketLifecycle",
+        "s3:GetBucketLogging",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketEncryption",
+        "s3:PutBucketLifecycle",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "ssm:GetParameter",
+        "ssm:PutParameter",
+        "sts:GetCallerIdentity"
+      ],
       "Resource": "*"
     }
   ]
