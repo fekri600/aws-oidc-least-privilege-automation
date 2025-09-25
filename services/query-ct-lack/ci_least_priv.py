@@ -1,106 +1,89 @@
 #!/usr/bin/env python3
-import argparse, json, os, time, datetime as dt
+import argparse, json, time, datetime as dt
 import boto3
 
-def to_actions(event_source, event_name):
-    """Convert CloudTrail eventSource + eventName to IAM action string."""
-    svc = event_source.split(".")[0]
-    return f"{svc}:{event_name}"
+NOISE_ACTIONS = {
+    "cloudtrail:StartQuery",
+    "cloudtrail:GetQueryResults",
+    "sts:GetCallerIdentity",
+}
 
-def start_query(client, eds, role_arn, start_time, end_time):
-    # Extract Event Data Store ID (arn:aws:cloudtrail:region:account:eventdatastore/uuid)
-    eds_id = eds.split('/')[-1] if '/' in eds else eds
-    q = f"""
-    SELECT eventSource, eventName
-    FROM {eds_id}
-    WHERE userIdentity.sessionContext.sessionIssuer.arn = '{role_arn}'
-      AND eventTime BETWEEN from_iso8601_timestamp('{start_time}') 
-                        AND from_iso8601_timestamp('{end_time}')
-      AND errorCode IS NULL
-    GROUP BY eventSource, eventName
-    """
-    print(f"Running query on Event Data Store: {eds_id}")
-    r = client.start_query(QueryStatement=q)
-    return r["QueryId"]
-
-def wait_results(client, qid, timeout=60):
-    start = time.time()
+def wait_policy(access, job_id, timeout_s=600):
+    t0 = time.time()
     while True:
-        r = client.get_query_results(QueryId=qid)
-        status = r["QueryStatus"]
-        print(f"Query status: {status}")
-        if status in ("FINISHED", "FAILED", "CANCELLED"):
-            if status == "FAILED":
-                print(f"Query failed. Full response: {r}")
+        r = access.get_generated_policy(jobId=job_id)
+        status = r["jobDetails"]["status"]
+        if status in ("SUCCEEDED", "FAILED", "CANCELED"):
             return r
-        if time.time() - start > timeout:
-            raise TimeoutError("CloudTrail Lake query timed out")
-        time.sleep(2)
-
-def parse_actions(res):
-    actions = set()
-    for row in res.get("QueryResultRows", []):
-        # Parse the CloudTrail Lake result format: [{'eventSource': 'value'}, {'eventName': 'value'}]
-        event_source = ""
-        event_name = ""
-        
-        for item in row:
-            if 'eventSource' in item:
-                event_source = item['eventSource']
-            elif 'eventName' in item:
-                event_name = item['eventName']
-        
-        if event_source and event_name:
-            actions.add(to_actions(event_source, event_name))
-            print(f"Added action: {event_source}:{event_name}")
-    
-    return sorted(actions)
-
-def build_policy(needed_actions):
-    return {
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Sid": "LeastPrivAuto",
-            "Effect": "Allow",
-            "Action": sorted(needed_actions),
-            "Resource": "*"   
-        }]
-    }
+        if time.time() - t0 > timeout_s:
+            access.cancel_policy_generation(jobId=job_id)
+            raise TimeoutError("Access Analyzer policy generation timed out")
+        time.sleep(3)
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--eds-arn", required=True)
-    ap.add_argument("--role-arn", required=True)
-    ap.add_argument("--policy-path", required=True,
-                    help="Path to bootstrap/modules/oidc/policies/permission-policy.json")
-    ap.add_argument("--lookback-hours", type=int, default=24)
+    ap = argparse.ArgumentParser(
+        description="Generate least-priv IAM policy via IAM Access Analyzer from CloudTrail"
+    )
+    ap.add_argument("--principal-arn", required=True, help="Role ARN to right-size")
+    ap.add_argument("--trail-arn", required=True, help="CloudTrail trail ARN")
+    ap.add_argument("--access-role-arn", required=True,
+                    help="ARN of role that Access Analyzer uses to read the trail (must have S3 read on the trail bucket)")
+    ap.add_argument("--regions", default="", help="Comma list of regions that the trail covers (e.g., us-east-1,us-west-2). Leave empty to use allRegions=true")
+    ap.add_argument("--lookback-hours", type=int, default=168, help="Hours of activity to analyze (max 2160 ~= 90 days)")
+    ap.add_argument("--policy-path", required=True, help="Path to overwrite (permission-policy.json)")
     args = ap.parse_args()
 
-    end = dt.datetime.utcnow()
+    end = dt.datetime.utcnow().replace(microsecond=0)
     start = end - dt.timedelta(hours=args.lookback_hours)
-    start_s = start.replace(microsecond=0).isoformat() + "Z"
-    end_s = end.replace(microsecond=0).isoformat() + "Z"
 
-    client = boto3.client("cloudtrail")
+    access = boto3.client("accessanalyzer")
 
-    print(f"EDS ARN: {args.eds_arn}")
-    print(f"Role ARN: {args.role_arn}")
-    print(f"Time range: {start_s} to {end_s}")
+    trails = [{
+        "cloudTrailArn": args.trail_arn,
+        **({"regions": [r.strip() for r in args.regions.split(",") if r.strip()], "allRegions": False}
+           if args.regions.strip() else {"allRegions": True})
+    }]
 
-    qid = start_query(client, args.eds_arn, args.role_arn, start_s, end_s)
-    res = wait_results(client, qid)
-    if res["QueryStatus"] != "FINISHED":
-        raise SystemExit(f"Query failed: {res['QueryStatus']}")
+    resp = access.start_policy_generation(
+        policyGenerationDetails={"principalArn": args.principal_arn},
+        cloudTrailDetails={
+            "trails": trails,
+            "accessRole": args.access_role_arn,
+            "startTime": start,
+            "endTime": end,
+        }
+    )
+    job_id = resp["jobId"]
 
-    used_actions = parse_actions(res)
-    print(f"Discovered {len(used_actions)} actions: {used_actions}")
+    result = wait_policy(access, job_id)
+    status = result["jobDetails"]["status"]
+    if status != "SUCCEEDED":
+        raise SystemExit(f"Access Analyzer generation status: {status}")
 
-    # Overwrite the original policy file with only the needed actions
-    new_doc = build_policy(used_actions)
+    gen = result["generatedPolicyResult"]["generatedPolicies"]
+    if not gen:
+        raise SystemExit("No generated policy returned")
+
+    statements = gen[0]["policy"].get("Statement", [])
+    # Optional: drop noise
+    cleaned = []
+    for s in statements:
+        acts = s.get("Action")
+        if isinstance(acts, str):
+            if acts in NOISE_ACTIONS:
+                continue
+        elif isinstance(acts, list):
+            acts = [a for a in acts if a not in NOISE_ACTIONS]
+            if not acts:
+                continue
+            s = {**s, "Action": acts}
+        cleaned.append(s)
+
+    policy = {"Version": "2012-10-17", "Statement": cleaned or statements}
+
     with open(args.policy_path, "w") as f:
-        json.dump(new_doc, f, indent=2)
-    print(f"Policy overwritten at {args.policy_path}")
-
+        json.dump(policy, f, indent=2)
+    print(f"Wrote generated policy to {args.policy_path}")
 
 if __name__ == "__main__":
     main()
