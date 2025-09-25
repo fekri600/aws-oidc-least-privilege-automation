@@ -50,7 +50,8 @@ jobs:
             --eds-arn "$EDS_ARN" \
             --role-arn "$ROLE_ARN" \
             --policy-path bootstrap/modules/oidc/policies/permission-policy.json \
-            --lookback-hours "${LOOKBACK_HOURS}"
+            --lookback-hours "${LOOKBACK_HOURS}" \
+            --raw-output "cloudtrail-raw-results.json"
 
       - name: Create PR with updated policy
         uses: peter-evans/create-pull-request@v6
@@ -61,8 +62,13 @@ jobs:
           body: |
             This PR tightens the GitHub OIDC role policy (`permission-policy.json`)
             based on actions actually used in the last ${{ github.event.inputs.hours || '24' }}h.
+            
+            ## Files Updated:
+            - `bootstrap/modules/oidc/policies/permission-policy.json` - Updated IAM policy with least privilege permissions
+            - `cloudtrail-raw-results.json` - Raw CloudTrail query results showing all actions and resource ARNs used
           add-paths: |
             bootstrap/modules/oidc/policies/permission-policy.json
+            cloudtrail-raw-results.json
           commit-message: "chore: update OIDC role policy from CloudTrail evidence"
           delete-branch: true
           
