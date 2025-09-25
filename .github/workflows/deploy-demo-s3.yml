@@ -1,0 +1,32 @@
+name: deploy-demo-s3
+on:
+  push:
+    paths:
+      - 'env/shared/global/storage/**'
+  workflow_dispatch: {}
+
+jobs:
+  storage:
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    env: { AWS_REGION: us-east-1 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.12.2 }
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-artifacts
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init/apply (storage)
+        run: |
+          terraform -chdir=env/shared/global/storage init -upgrade -input=false
+          terraform -chdir=env/shared/global/storage apply -auto-approve
+
+     
+
+  
