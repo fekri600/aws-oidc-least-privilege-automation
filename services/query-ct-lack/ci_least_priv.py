@@ -41,9 +41,11 @@ def main():
         cloudTrailDetails={
             "startTime": start,
             "endTime": end,
-            "trails": [{"cloudTrailArn": args.trail_arn}],
-            "accessRole": args.access_role_arn,
-            "allRegions": True
+            "trails": [{
+                "cloudTrailArn": args.trail_arn,
+                "regions": ["*"]
+            }],
+            "accessRole": args.access_role_arn
         }
     )
     job_id = resp["jobId"]
