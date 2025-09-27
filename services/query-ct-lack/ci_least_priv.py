@@ -46,25 +46,40 @@ def main():
 
     access = boto3.client("accessanalyzer")
 
-    resp = access.start_policy_generation(
-        policyGenerationDetails={"principalArn": args.principal_arn},
-        cloudTrailDetails={
+    # Debug: Print the request parameters
+    request_params = {
+        "policyGenerationDetails": {"principalArn": args.principal_arn},
+        "cloudTrailDetails": {
             "trails": [trail_spec],
             "accessRole": args.access_role_arn,
             "startTime": start,
             "endTime": end,
         },
-    )
+    }
+    print(f"[*] Request parameters: {json.dumps(request_params, indent=2, default=str)}")
+
+    resp = access.start_policy_generation(**request_params)
     job_id = resp["jobId"]
     print(f"[+] Started Access Analyzer policy generation job: {job_id}")
 
     result = wait_policy(access, job_id)
     status = result["jobDetails"]["status"]
     if status != "SUCCEEDED":
-        error_reason = result["jobDetails"].get("error", "Unknown error")
         print(f"[!] Access Analyzer generation failed with status: {status}")
-        print(f"[!] Error details: {error_reason}")
-        raise SystemExit(f"Access Analyzer generation failed: {status} - {error_reason}")
+        print(f"[!] Full job details: {json.dumps(result, indent=2)}")
+        
+        # Try to extract more detailed error information
+        job_details = result.get("jobDetails", {})
+        error_info = job_details.get("error", {})
+        if isinstance(error_info, dict):
+            error_code = error_info.get("code", "Unknown")
+            error_message = error_info.get("message", "Unknown error")
+            print(f"[!] Error code: {error_code}")
+            print(f"[!] Error message: {error_message}")
+            raise SystemExit(f"Access Analyzer generation failed: {status} - {error_code}: {error_message}")
+        else:
+            print(f"[!] Error details: {error_info}")
+            raise SystemExit(f"Access Analyzer generation failed: {status} - {error_info}")
 
     gen = result["generatedPolicyResult"]["generatedPolicies"]
     if not gen:
