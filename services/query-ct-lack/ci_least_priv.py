@@ -183,7 +183,15 @@ def main() -> None:
     if not gen:
         raise SystemExit("No generated policy returned (no CloudTrail activity for the principal?)")
 
-    statements = gen[0]["policy"].get("Statement", [])
+    # Handle both string and dict policy formats
+    policy_data = gen[0]["policy"]
+    if isinstance(policy_data, str):
+        try:
+            policy_data = json.loads(policy_data)
+        except json.JSONDecodeError as e:
+            raise SystemExit(f"Failed to parse generated policy JSON: {e}")
+    
+    statements = policy_data.get("Statement", [])
     if not args.no_filter_noise:
         filtered = []
         for s in statements:

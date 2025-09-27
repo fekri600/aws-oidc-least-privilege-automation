@@ -49,60 +49,50 @@ resource "aws_iam_role" "access_analyzer_role" {
 
 # IAM policy for Access Analyzer role to read CloudTrail logs
 resource "aws_iam_role_policy" "access_analyzer_policy" {
-  name = "access-analyzer-cloudtrail-policy"
+  name = "aa-read-cloudtrail-inline"
   role = aws_iam_role.access_analyzer_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      # --- S3: read the CloudTrail log bucket ---
       {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:ListBucket",
-          "s3:GetBucketLocation"
-        ]
-        Resource = [
-          aws_s3_bucket.ct_logs.arn,
-          "${aws_s3_bucket.ct_logs.arn}/*"
-        ]
+        Effect   = "Allow"
+        Action   = ["*"]
+        Resource = "*"
       },
+      {
+        Effect   = "Allow"
+        Action   = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        Resource = "${aws_s3_bucket.ct_logs.arn}/*"
+      },
+
+      # --- CloudTrail: read-only (validate trail details you passed) ---
       {
         Effect = "Allow"
         Action = [
           "cloudtrail:GetTrail",
-          "cloudtrail:DescribeTrails",
           "cloudtrail:GetTrailStatus",
           "cloudtrail:GetEventSelectors",
-          "cloudtrail:ListTrails"
+          "cloudtrail:GetInsightSelectors"
         ]
-        Resource = "*"
+        Resource = aws_cloudtrail.main.arn
       },
       {
-        Effect = "Allow"
-        Action = [
-          "logs:DescribeLogGroups",
-          "logs:DescribeLogStreams",
-          "logs:GetLogEvents"
-        ]
+        Effect   = "Allow"
+        Action   = ["cloudtrail:DescribeTrails", "cloudtrail:ListTrails"]
         Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "kms:ViaService" = "s3.${data.aws_region.current.name}.amazonaws.com"
-          }
-        }
       }
+
+      # If your trail uses SSE-KMS for S3 objects, also add:
+      # ,{
+      #   "Effect":"Allow",
+      #   "Action":["kms:Decrypt"],
+      #   "Resource": "<kms-key-arn>"
+      # }
     ]
   })
 }
-
-# Data source for current region
-data "aws_region" "current" {}
