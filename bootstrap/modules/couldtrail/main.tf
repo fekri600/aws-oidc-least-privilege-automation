@@ -59,7 +59,8 @@ resource "aws_iam_role_policy" "access_analyzer_policy" {
         Effect = "Allow"
         Action = [
           "s3:GetObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
         ]
         Resource = [
           aws_s3_bucket.ct_logs.arn,
@@ -71,10 +72,37 @@ resource "aws_iam_role_policy" "access_analyzer_policy" {
         Action = [
           "cloudtrail:GetTrail",
           "cloudtrail:DescribeTrails",
-          "cloudtrail:GetTrailStatus"
+          "cloudtrail:GetTrailStatus",
+          "cloudtrail:GetEventSelectors",
+          "cloudtrail:ListTrails"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "s3.${data.aws_region.current.name}.amazonaws.com"
+          }
+        }
       }
     ]
   })
 }
+
+# Data source for current region
+data "aws_region" "current" {}
