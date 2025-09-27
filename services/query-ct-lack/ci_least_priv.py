@@ -3,7 +3,7 @@ import argparse
 import json
 import time
 import datetime as dt
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import boto3
 from botocore.exceptions import ClientError
@@ -15,8 +15,10 @@ NOISE_ACTIONS = {
     "cloudtrail:GetQueryResults",
 }
 NOISE_PREFIXES = (
-    "access-analyzer:",  # calls made by this generator itself
+    "access-analyzer:",  # calls made by the generator itself
 )
+
+DEFAULT_PRESERVE_SIDS = {"S3StateManagement"}
 
 def jdump(obj: Any) -> str:
     try:
@@ -28,7 +30,6 @@ def log(msg: str) -> None:
     print(msg, flush=True)
 
 def wait_policy(access, job_id: str, timeout_s: int = 900, poll_s: int = 4) -> Dict[str, Any]:
-    """Poll until job completes; request resource placeholders and disable service template."""
     t0 = time.time()
     while True:
         r = access.get_generated_policy(
@@ -48,7 +49,6 @@ def wait_policy(access, job_id: str, timeout_s: int = 900, poll_s: int = 4) -> D
         time.sleep(poll_s)
 
 def build_cloudtrail_details(args, start: dt.datetime, end: dt.datetime) -> Dict[str, Any]:
-    """AUTO mode (time only) or EXPLICIT (trail + access role)."""
     details: Dict[str, Any] = {"startTime": start, "endTime": end}
     explicit = bool(args.trail_arn) and bool(args.access_role_arn)
     if explicit:
@@ -84,11 +84,6 @@ def extract_service_error(result: Dict[str, Any]) -> Optional[str]:
     return None
 
 def s3_buckets_used_by_principal(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Set[str]:
-    """
-    Return concrete S3 bucket names used by the given principal within [start, end]
-    by scanning CloudTrail LookupEvents and parsing CloudTrailEvent JSON.
-    Matches both direct role ARN and assumed-role session issuer ARN.
-    """
     buckets: Set[str] = set()
     next_token = None
 
@@ -104,11 +99,7 @@ def s3_buckets_used_by_principal(cloudtrail, principal_arn: str, start: dt.datet
         return False
 
     while True:
-        kwargs = {
-            "StartTime": start,
-            "EndTime": end,
-            "MaxResults": 50
-        }
+        kwargs = {"StartTime": start, "EndTime": end, "MaxResults": 50}
         if next_token:
             kwargs["NextToken"] = next_token
         resp = cloudtrail.lookup_events(**kwargs)
@@ -120,18 +111,15 @@ def s3_buckets_used_by_principal(cloudtrail, principal_arn: str, start: dt.datet
             if not _principal_matches(detail):
                 continue
 
-            # 1) requestParameters.bucketName
             rp = detail.get("requestParameters") or {}
             bn = rp.get("bucketName")
             if isinstance(bn, str) and bn:
                 buckets.add(bn)
 
-            # 2) resources[] with type AWS::S3::Bucket
             for r in detail.get("resources") or []:
                 if r.get("resourceType") in ("AWS::S3::Bucket", "s3"):
                     name = r.get("resourceName")
                     if isinstance(name, str) and name:
-                        # resourceName may be 'arn:aws:s3:::bucket' or just 'bucket'
                         if name.startswith("arn:aws:s3:::"):
                             name = name.split("arn:aws:s3:::", 1)[1]
                         buckets.add(name)
@@ -142,18 +130,12 @@ def s3_buckets_used_by_principal(cloudtrail, principal_arn: str, start: dt.datet
 
     return buckets
 
-def replace_placeholders_with_concrete_resources(statements: List[Dict[str, Any]],
-                                                s3_bucket_names: Set[str]) -> List[Dict[str, Any]]:
-    """
-    Replace 'arn:aws:s3:::${BucketName}' (and list variants) with concrete bucket ARNs
-    derived from CloudTrail evidence.
-    """
+def replace_s3_placeholders(statements: List[Dict[str, Any]], s3_bucket_names: Set[str]) -> List[Dict[str, Any]]:
     if not s3_bucket_names:
         return statements
-
     concrete_arns = [f"arn:aws:s3:::{b}" for b in sorted(s3_bucket_names)]
 
-    new_statements: List[Dict[str, Any]] = []
+    out: List[Dict[str, Any]] = []
     for s in statements:
         res = s.get("Resource")
         if isinstance(res, str) and res == "arn:aws:s3:::${BucketName}":
@@ -169,26 +151,48 @@ def replace_placeholders_with_concrete_resources(statements: List[Dict[str, Any]
                     replaced.append(r)
             if changed:
                 s = {**s, "Resource": replaced}
-        new_statements.append(s)
-    return new_statements
+        out.append(s)
+    return out
+
+def load_existing_policy(path: str) -> Optional[Dict[str, Any]]:
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except Exception:
+        log("[!] Warning: existing policy file present but not valid JSON; ignoring.")
+        return None
+
+def split_preserved(statements: List[Dict[str, Any]], preserve_sids: Set[str]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    keep, rest = [], []
+    for s in statements:
+        sid = s.get("Sid")
+        (keep if sid in preserve_sids else rest).append(s)
+    return keep, rest
+
+def dedup_statements(stmts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    seen = set()
+    out = []
+    for s in stmts:
+        key = json.dumps(s, sort_keys=True)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(s)
+    return out
 
 def main() -> None:
-    ap = argparse.ArgumentParser(
-        description="Generate least-priv IAM policy via IAM Access Analyzer from CloudTrail evidence"
-    )
+    ap = argparse.ArgumentParser(description="Generate least-priv IAM policy via IAM Access Analyzer from CloudTrail evidence")
     ap.add_argument("--principal-arn", required=True, help="Role/User ARN to analyze")
     ap.add_argument("--policy-path", required=True, help="File to write the generated JSON policy")
     ap.add_argument("--lookback-hours", type=int, default=24, help="Hours to analyze (max 2160)")
-
-    # EXPLICIT mode (optional)
     ap.add_argument("--trail-arn", help="CloudTrail trail ARN (optional)")
     ap.add_argument("--access-role-arn", help="IAM role AA assumes to read the trail's S3 bucket (optional)")
     ap.add_argument("--regions", default="", help="CSV regions for the trail; omit to use allRegions=true")
-
-    # Filtering switches
-    ap.add_argument("--keep-star-resources", action="store_true",
-                    help="Keep statements with Resource:'*' (default: drop them)")
-
+    ap.add_argument("--keep-star-resources", action="store_true", help="Keep statements with Resource:'*' (default: drop)")
+    ap.add_argument("--preserve-sids", default=",".join(sorted(DEFAULT_PRESERVE_SIDS)),
+                    help="Comma-separated list of Sid values to preserve from existing policy file")
     args = ap.parse_args()
 
     end = dt.datetime.utcnow().replace(microsecond=0)
@@ -198,11 +202,7 @@ def main() -> None:
     cloudtrail = boto3.client("cloudtrail")
 
     cloudtrail_details = build_cloudtrail_details(args, start, end)
-
-    params = {
-        "policyGenerationDetails": {"principalArn": args.principal_arn},
-        "cloudTrailDetails": cloudtrail_details
-    }
+    params = {"policyGenerationDetails": {"principalArn": args.principal_arn}, "cloudTrailDetails": cloudtrail_details}
     log(f"[*] Request parameters: {jdump(params)}")
 
     try:
@@ -220,15 +220,12 @@ def main() -> None:
         log(f"[!] Access Analyzer generation failed with status: {status}")
         log(f"[!] Full job details: {jdump(result)}")
         hint = extract_service_error(result)
-        if hint:
-            raise SystemExit(f"FAILED - {hint}")
-        raise SystemExit("FAILED - Unknown cause (see job details above)")
+        raise SystemExit(f"FAILED - {hint or 'Unknown cause'}")
 
     gen = result.get("generatedPolicyResult", {}).get("generatedPolicies", [])
     if not gen:
         raise SystemExit("No generated policy returned")
 
-    # Policy can be a dict or a JSON string
     policy_data = gen[0]["policy"]
     if isinstance(policy_data, str):
         try:
@@ -240,7 +237,6 @@ def main() -> None:
     if not isinstance(statements, list):
         statements = [statements]
 
-    # Noise filtering
     def keep_action(action: str) -> bool:
         if action in NOISE_ACTIONS:
             return False
@@ -249,11 +245,10 @@ def main() -> None:
                 return False
         return True
 
+    # Filter noise
     filtered: List[Dict[str, Any]] = []
     for s in statements:
         acts = s.get("Action")
-
-        # Normalize and filter actions
         if isinstance(acts, str):
             if not keep_action(acts):
                 continue
@@ -262,23 +257,37 @@ def main() -> None:
             if not acts:
                 continue
             s = {**s, "Action": acts}
-
         filtered.append(s)
 
-    # Replace S3 ${BucketName} placeholders with exact buckets used by this principal
+    # Replace S3 placeholders with concrete buckets used by this principal
     used_buckets = s3_buckets_used_by_principal(cloudtrail, args.principal_arn, start, end)
-    filtered = replace_placeholders_with_concrete_resources(filtered, used_buckets)
+    filtered = replace_s3_placeholders(filtered, used_buckets)
 
-    # Optionally drop star-resources
-    final_statements: List[Dict[str, Any]] = []
+    # Optionally drop star resources
+    tmp: List[Dict[str, Any]] = []
     for s in filtered:
         res = s.get("Resource")
         if not args.keep_star_resources:
             if res == "*" or (isinstance(res, list) and any(r == "*" for r in res)):
                 continue
-        final_statements.append(s)
+        tmp.append(s)
+    generated_out = tmp
 
+    # Preserve specific statements from existing file (e.g., your S3StateManagement block)
+    existing = load_existing_policy(args.policy_path)
+    preserve_sids = {s.strip() for s in (args.preserve_sids or "").split(",") if s.strip()}
+    preserved: List[Dict[str, Any]] = []
+    if existing:
+        ex_statements = existing.get("Statement", [])
+        if not isinstance(ex_statements, list):
+            ex_statements = [ex_statements]
+        keep, _rest = split_preserved(ex_statements, preserve_sids)
+        preserved = keep
+
+    # Merge preserved + generated, dedup, and write
+    final_statements = dedup_statements(preserved + generated_out)
     policy_out = {"Version": "2012-10-17", "Statement": final_statements}
+
     with open(args.policy_path, "w") as f:
         json.dump(policy_out, f, indent=2)
     log(f"[+] Wrote least-privilege policy to {args.policy_path}")
