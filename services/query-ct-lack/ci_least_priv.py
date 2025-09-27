@@ -71,4 +71,4 @@ def main():
     print(f"[+] Wrote least-privilege policy to {args.policy_path}")
 
 if __name__ == "__main__":
-    main()
+    main()'''
