@@ -16,6 +16,12 @@ apply-bt:
 	@echo " Setting CTS_LAKE_EDS_ARN..."
 	gh secret set CTS_LAKE_EDS_ARN --body "$$(terraform -chdir=bootstrap output -raw cloudtrail_event_data_store_arn)"
 
+	@echo " Setting AWS_CLOUDTRAIL_ARN..."
+	gh secret set AWS_CLOUDTRAIL_ARN --body "$$(terraform -chdir=bootstrap output -raw cloudtrail_arn)"
+
+	@echo " Setting AWS_ACCESS_ANALYZER_ROLE_ARN..."
+	gh secret set AWS_ACCESS_ANALYZER_ROLE_ARN --body "$$(terraform -chdir=bootstrap output -raw access_analyzer_role_arn)"
+
 	@echo "✓ Apply completed."
 
 delete-bt:

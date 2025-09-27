@@ -28,3 +28,44 @@ resource "aws_accessanalyzer_analyzer" "account" {
   analyzer_name = "account-analyzer"
   type          = "ACCOUNT"
 }
+
+# IAM role for Access Analyzer to assume when reading CloudTrail logs
+resource "aws_iam_role" "access_analyzer_role" {
+  name = "access-analyzer-cloudtrail-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "access-analyzer.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# IAM policy for Access Analyzer role to read CloudTrail logs
+resource "aws_iam_role_policy" "access_analyzer_policy" {
+  name = "access-analyzer-cloudtrail-policy"
+  role = aws_iam_role.access_analyzer_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.ct_logs.arn,
+          "${aws_s3_bucket.ct_logs.arn}/*"
+        ]
+      }
+    ]
+  })
+}

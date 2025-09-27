@@ -17,6 +17,8 @@ permissions:
 env:
   AWS_REGION: us-east-1
   ROLE_ARN: ${{ secrets.AWS_OIDC_ROLE_ARN }}   # Role under analysis
+  TRAIL_ARN: ${{ secrets.AWS_CLOUDTRAIL_ARN }} # CloudTrail trail ARN
+  ACCESS_ROLE_ARN: ${{ secrets.AWS_ACCESS_ANALYZER_ROLE_ARN }} # IAM role for Access Analyzer
 
 jobs:
   least-priv:
@@ -42,10 +44,14 @@ jobs:
       - name: Run least-privilege script
         env:
           ROLE_ARN: ${{ env.ROLE_ARN }}
+          TRAIL_ARN: ${{ env.TRAIL_ARN }}
+          ACCESS_ROLE_ARN: ${{ env.ACCESS_ROLE_ARN }}
           LOOKBACK_HOURS: ${{ github.event.inputs.hours || '24' }}
         run: |
           python services/query-ct-lack/ci_least_priv.py \
             --principal-arn "$ROLE_ARN" \
+            --trail-arn "$TRAIL_ARN" \
+            --access-role-arn "$ACCESS_ROLE_ARN" \
             --policy-path bootstrap/modules/oidc/policies/permission-policy.json \
             --lookback-hours "${LOOKBACK_HOURS}"
 

@@ -21,3 +21,13 @@ output "debug_state_bucket_name" {
 output "cloudtrail_event_data_store_arn" {
   value = module.cloudtrail-lack.cloudtrail_event_data_store_arn
 }
+
+output "cloudtrail_arn" {
+  description = "The ARN of the CloudTrail trail"
+  value       = module.cloudtrail.cloudtrail_arn
+}
+
+output "access_analyzer_role_arn" {
+  description = "The ARN of the IAM role for Access Analyzer"
+  value       = module.cloudtrail.access_analyzer_role_arn
+}
