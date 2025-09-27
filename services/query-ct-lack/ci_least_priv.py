@@ -13,6 +13,7 @@ def wait_policy(access, job_id, timeout_s=600):
     while True:
         r = access.get_generated_policy(jobId=job_id)
         status = r["jobDetails"]["status"]
+        print(f"[*] Job {job_id} status: {status}")
         if status in ("SUCCEEDED", "FAILED", "CANCELED"):
             return r
         if time.time() - t0 > timeout_s:
@@ -55,11 +56,15 @@ def main():
         },
     )
     job_id = resp["jobId"]
+    print(f"[+] Started Access Analyzer policy generation job: {job_id}")
 
     result = wait_policy(access, job_id)
     status = result["jobDetails"]["status"]
     if status != "SUCCEEDED":
-        raise SystemExit(f"Access Analyzer generation failed: {status}")
+        error_reason = result["jobDetails"].get("error", "Unknown error")
+        print(f"[!] Access Analyzer generation failed with status: {status}")
+        print(f"[!] Error details: {error_reason}")
+        raise SystemExit(f"Access Analyzer generation failed: {status} - {error_reason}")
 
     gen = result["generatedPolicyResult"]["generatedPolicies"]
     if not gen:
