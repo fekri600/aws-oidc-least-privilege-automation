@@ -65,6 +65,15 @@ resource "aws_iam_role_policy" "access_analyzer_policy" {
           aws_s3_bucket.ct_logs.arn,
           "${aws_s3_bucket.ct_logs.arn}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "cloudtrail:GetTrail",
+          "cloudtrail:DescribeTrails",
+          "cloudtrail:GetTrailStatus"
+        ]
+        Resource = "*"
       }
     ]
   })
