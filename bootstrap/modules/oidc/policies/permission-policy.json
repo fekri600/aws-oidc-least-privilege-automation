@@ -19,10 +19,25 @@
       ]
     },
     {
-      "Sid": "All",
+      "Sid": "SupportedServiceSid1",
       "Effect": "Allow",
-      "Action": ["*"],
-      "Resource": "*"
+      "Action": [
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketLogging",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::i2509dr-demo-bkt"
+      ]
     }
   ]
 }
