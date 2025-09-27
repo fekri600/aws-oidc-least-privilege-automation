@@ -42,7 +42,8 @@ def main():
             "startTime": start,
             "endTime": end,
             "trails": [{"cloudTrailArn": args.trail_arn}],
-            "accessRole": args.access_role_arn
+            "accessRole": args.access_role_arn,
+            "allRegions": True
         }
     )
     job_id = resp["jobId"]
