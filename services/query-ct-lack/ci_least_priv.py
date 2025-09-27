@@ -27,6 +27,8 @@ def main():
     ap.add_argument("--principal-arn", required=True, help="Role/User ARN to analyze")
     ap.add_argument("--lookback-hours", type=int, default=168, help="Hours of activity to analyze (max 2160 ~= 90 days)")
     ap.add_argument("--policy-path", required=True, help="Where to save generated JSON policy")
+    ap.add_argument("--trail-arn", required=True, help="CloudTrail trail ARN")
+    ap.add_argument("--access-role-arn", required=True, help="IAM role ARN for Access Analyzer to assume")
     args = ap.parse_args()
 
     end = dt.datetime.utcnow().replace(microsecond=0)
@@ -39,6 +41,8 @@ def main():
         cloudTrailDetails={
             "startTime": start,
             "endTime": end,
+            "trails": [{"cloudTrailArn": args.trail_arn}],
+            "accessRole": args.access_role_arn
         }
     )
     job_id = resp["jobId"]
