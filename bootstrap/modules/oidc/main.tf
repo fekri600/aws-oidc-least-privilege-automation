@@ -26,7 +26,7 @@ resource "aws_iam_policy" "github_devops_policy" {
   name = var.iam_policy_name
   policy = templatefile("${path.module}/policies/permission-policy.json", {
     state_bucket_name = var.state_bucket_name
-    state_bucket_name = var.state_bucket_name
+    
   })
 }
 

@@ -469,54 +469,6 @@ def replace_any_placeholders_with_bucket_arns(statements: List[Dict[str, Any]],
     return out
 
 # -------------------------
-# NEW: wildcardize variable tokens in Resource
-# -------------------------
-def _wildcardize_from_first_variable(s: str) -> str:
-    """
-    If a string contains a ${...} token, replace everything from the first token to the end with '*'.
-    Examples:
-      arn:aws:route53:::change/${Id}                      -> arn:aws:route53:::change/*
-      arn:aws:ec2:${Region}:${Account}:security-group/${SecurityGroupId} -> arn:aws:ec2:*
-    """
-    m = PLACEHOLDER_RE.search(s)
-    if not m:
-        return s
-    return s[:m.start()] + "*"
-
-def wildcardize_variable_resources(statements: List[Dict[str, Any]],
-                                   preserved_sids: Set[str]) -> List[Dict[str, Any]]:
-    """
-    Post-process pass: for any Resource value (str or list) that still contains ${...},
-    replace from the first ${...} to the end with a single '*'.
-    """
-    out: List[Dict[str, Any]] = []
-    for s in statements:
-        sid = s.get("Sid")
-        if sid in preserved_sids:
-            out.append(s)
-            continue
-        res = s.get("Resource")
-        if res is None:
-            out.append(s)
-            continue
-
-        if isinstance(res, list):
-            new_res = []
-            changed = False
-            for r in res:
-                if isinstance(r, str) and PLACEHOLDER_RE.search(r):
-                    new_res.append(_wildcardize_from_first_variable(r))
-                    changed = True
-                else:
-                    new_res.append(r)
-            if changed:
-                s = {**s, "Resource": new_res}
-        elif isinstance(res, str) and PLACEHOLDER_RE.search(res):
-            s = {**s, "Resource": _wildcardize_from_first_variable(res)}
-        out.append(s)
-    return out
-
-# -------------------------
 # Main
 # -------------------------
 def main() -> None:
@@ -536,8 +488,6 @@ def main() -> None:
                     help="Which evidence to use when replacing placeholders (default: union)")
     ap.add_argument("--drop-unresolved-placeholders", action="store_true",
                     help="Drop any non-preserved statements that still contain ${...} after replacement")
-    ap.add_argument("--wildcardize-var-resources", action="store_true",
-                    help="After replacement, turn any remaining ${...} in Resource into '*' from the first variable onward")
     args = ap.parse_args()
 
     end = dt.datetime.utcnow().replace(microsecond=0)
@@ -629,10 +579,6 @@ def main() -> None:
         preserved_sids=preserve_sids,
         drop_unresolved=args.drop_unresolved_placeholders
     )
-
-    # 6) NEW: wildcardize remaining ${...} in Resource from the first variable onward
-    if args.wildcardize_var_resources:
-        filtered = wildcardize_variable_resources(filtered, preserved_sids=preserve_sids)
 
     # ----------------------------------
     # Optionally drop star resources
