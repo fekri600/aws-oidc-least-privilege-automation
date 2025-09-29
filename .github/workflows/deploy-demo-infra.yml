@@ -5,13 +5,27 @@ on:
       - 'main.tf'
       - 'local.tf'
       - 'env/**'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Choose action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy
+          - destroy
+      confirm_destroy:
+        description: 'Type "DESTROY" to confirm (only required for destroy)'
+        required: false
+        default: ''
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read }
     env: { AWS_REGION: us-east-1 }
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'deploy')
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -24,11 +38,41 @@ jobs:
           role-session-name: gha-artifacts
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform init/apply (storage)
+      - name: Terraform init/apply
         run: |
           terraform init -upgrade -input=false
           terraform apply -auto-approve
 
-     
+  destroy:
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    env: { AWS_REGION: us-east-1 }
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    steps:
+      - name: Validate destroy confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm_destroy }}" != "DESTROY" ]; then
+            echo "x Confirmation failed. You must type 'DESTROY' to proceed."
+            exit 1
+          fi
+          echo "✓ Confirmation received. Proceeding with infrastructure destruction..."
 
-  
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.12.2 }
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          role-session-name: gha-destroy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform init/destroy
+        run: |
+          terraform init -upgrade -input=false
+          terraform destroy -auto-approve
+
+      - name: Destroy completed
+        run: |
+          echo "✓ Infrastructure destruction completed successfully"
