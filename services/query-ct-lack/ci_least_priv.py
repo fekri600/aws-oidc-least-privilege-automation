@@ -248,7 +248,13 @@ def bucket_from_placeholder(resource_str: str) -> Optional[str]:
         return None
     return f"{service}:{kind}"
 
+
 def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Dict[str, Set[str]]:
+    """
+    Generic ARN harvester from CloudTrail, plus a small booster for Route 53:
+    - harvest any ARN in 'resources[]'
+    - also parse requestParameters/responseElements to pick up hostedZoneId (Z...) and change id (C...)
+    """
     used: Dict[str, Set[str]] = defaultdict(set)
     next_token = None
 
@@ -263,11 +269,19 @@ def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, st
                 return True
         return False
 
+    def _norm_change_id(v: Optional[str]) -> Optional[str]:
+        if not isinstance(v, str) or not v:
+            return None
+        # CloudTrail sometimes records "/change/Cxxxx" or just "Cxxxx"
+        cid = v.split("/")[-1]
+        return cid if cid.startswith("C") else None
+
     while True:
         kwargs = {"StartTime": start, "EndTime": end, "MaxResults": 50}
         if next_token:
             kwargs["NextToken"] = next_token
         resp = cloudtrail.lookup_events(**kwargs)
+
         for e in resp.get("Events", []):
             try:
                 detail = json.loads(e.get("CloudTrailEvent", "{}"))
@@ -275,16 +289,42 @@ def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, st
                 continue
             if not _principal_matches(detail):
                 continue
+
+            # 1) Any explicit ARNs in event.resources
             for r in detail.get("resources") or []:
                 name = r.get("resourceName")
                 if isinstance(name, str) and name.startswith("arn:aws"):
                     b = bucket_from_arn(name)
                     if b:
                         used[b].add(name)
+
+            # 2) Route 53 booster: requestParameters / responseElements
+            rp = detail.get("requestParameters") or {}
+            relem = detail.get("responseElements") or {}
+
+            # Hosted zone ID (global ARN)
+            hz = rp.get("hostedZoneId") or relem.get("hostedZoneId")
+            if isinstance(hz, str) and hz.startswith("Z"):
+                used["route53:hostedzone"].add(f"arn:aws:route53:::hostedzone/{hz}")
+
+            # Change ID can be under several keys; also nested in changeInfo.id for ChangeResourceRecordSets
+            chg = (
+                rp.get("id")
+                or rp.get("changeId")
+                or relem.get("id")
+                or (isinstance(relem.get("changeInfo"), dict) and relem["changeInfo"].get("id"))
+            )
+            cid = _norm_change_id(chg)
+            if cid:
+                used["route53:change"].add(f"arn:aws:route53:::change/{cid}")
+
         next_token = resp.get("NextToken")
         if not next_token:
             break
+
     return used
+
+
 
 # -------------------------
 # NEW: read Terraform state automatically from backend.tf (S3)

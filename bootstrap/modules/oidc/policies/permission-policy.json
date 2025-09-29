@@ -66,7 +66,7 @@
       "Sid": "SupportedServiceSid5",
       "Effect": "Allow",
       "Action": "route53:GetChange",
-      "Resource": "arn:aws:route53:::change/${Id}"
+      "Resource": "arn:aws:route53:::change/*"
     },
     {
       "Sid": "SupportedServiceSid6",

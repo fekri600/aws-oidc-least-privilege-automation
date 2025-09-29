@@ -11,6 +11,12 @@
     },
     "prod|i2508dr-prod-1st-vpc": {
       "cidr": "10.3.0.0/16"
+    },
+    "prod|i2509demo-prod-us-west-1-vpc": {
+      "cidr": "10.4.0.0/16"
+    },
+    "prod|i2509demo-prod-us-east-1-vpc": {
+      "cidr": "10.5.0.0/16"
     }
   },
   "subnets": {
@@ -35,6 +41,30 @@
       "private": [
         "10.3.2.0/24",
         "10.3.3.0/24"
+      ],
+      "prefix": 24
+    },
+    "prod|i2509demo-prod-us-east-1-vpc": {
+      "vpc_cidr": "10.5.0.0/16",
+      "public": [
+        "10.5.0.0/24",
+        "10.5.1.0/24"
+      ],
+      "private": [
+        "10.5.2.0/24",
+        "10.5.3.0/24"
+      ],
+      "prefix": 24
+    },
+    "prod|i2509demo-prod-us-west-1-vpc": {
+      "vpc_cidr": "10.4.0.0/16",
+      "public": [
+        "10.4.0.0/24",
+        "10.4.1.0/24"
+      ],
+      "private": [
+        "10.4.2.0/24",
+        "10.4.3.0/24"
       ],
       "prefix": 24
     }
