@@ -1,0 +1,42 @@
+{
+  "vpcs": {
+    "i2508dr-prod-1st|i2508dr-prod-1st-vpc": {
+      "cidr": "10.0.0.0/16"
+    },
+    "i2508dr-prod-2nd|i2508dr-prod-2nd-vpc": {
+      "cidr": "10.1.0.0/16"
+    },
+    "prod|i2508dr-prod-2nd-vpc": {
+      "cidr": "10.2.0.0/16"
+    },
+    "prod|i2508dr-prod-1st-vpc": {
+      "cidr": "10.3.0.0/16"
+    }
+  },
+  "subnets": {
+    "prod|i2508dr-prod-2nd-vpc": {
+      "vpc_cidr": "10.2.0.0/16",
+      "public": [
+        "10.2.0.0/24",
+        "10.2.1.0/24"
+      ],
+      "private": [
+        "10.2.2.0/24",
+        "10.2.3.0/24"
+      ],
+      "prefix": 24
+    },
+    "prod|i2508dr-prod-1st-vpc": {
+      "vpc_cidr": "10.3.0.0/16",
+      "public": [
+        "10.3.0.0/24",
+        "10.3.1.0/24"
+      ],
+      "private": [
+        "10.3.2.0/24",
+        "10.3.3.0/24"
+      ],
+      "prefix": 24
+    }
+  }
+}

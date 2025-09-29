@@ -1,12 +1,14 @@
-name: deploy-demo-s3
+name: deploy-demo-infra
 on:
   push:
     paths:
-      - 'env/shared/global/storage/**'
+      - 'main.tf'
+      - 'local.tf'
+      - 'env/**'
   workflow_dispatch: {}
 
 jobs:
-  storage:
+  deploy:
     runs-on: ubuntu-latest
     permissions: { id-token: write, contents: read }
     env: { AWS_REGION: us-east-1 }
@@ -24,8 +26,8 @@ jobs:
 
       - name: Terraform init/apply (storage)
         run: |
-          terraform -chdir=env/shared/global/storage init -upgrade -input=false
-          terraform -chdir=env/shared/global/storage apply -auto-approve
+          terraform init -upgrade -input=false
+          terraform apply -auto-approve
 
      
 
