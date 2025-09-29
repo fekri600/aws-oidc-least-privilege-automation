@@ -19,10 +19,94 @@
       ]
     },
     {
-      "Sid": "All",
+      "Sid": "SupportedServiceSid1",
       "Effect": "Allow",
-      "Action": ["*"],
-      "Resource": "*"
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:CreateInternetGateway",
+        "ec2:DetachInternetGateway"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:internet-gateway/igw-025bb9ae7880f9af8"
+    },
+    {
+      "Sid": "SupportedServiceSid2",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AuthorizeSecurityGroupEgress",
+        "ec2:CreateSecurityGroup",
+        "ec2:DeleteSecurityGroup",
+        "ec2:RevokeSecurityGroupEgress"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:security-group/sg-09b6c34e43a522f40"
+    },
+    {
+      "Sid": "SupportedServiceSid3",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:DeleteSubnet"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:subnet/subnet-01a0a6d2ca487dfba"
+    },
+    {
+      "Sid": "SupportedServiceSid4",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:CreateSubnet",
+        "ec2:CreateVpc",
+        "ec2:DeleteVpc",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DetachInternetGateway",
+        "ec2:ModifyVpcAttribute"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:vpc/vpc-08da1eb6b10412c8f"
+    },
+    {
+      "Sid": "SupportedServiceSid5",
+      "Effect": "Allow",
+      "Action": "route53:GetChange",
+      "Resource": "arn:aws:route53:::change/${Id}"
+    },
+    {
+      "Sid": "SupportedServiceSid6",
+      "Effect": "Allow",
+      "Action": [
+        "route53:GetHostedZone",
+        "route53:ListResourceRecordSets"
+      ],
+      "Resource": "arn:aws:route53:::hostedzone/Z00750661KPK31GX4T3Q"
+    },
+    {
+      "Sid": "SupportedServiceSid7",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketLogging",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": [
+        "arn:aws:s3:::i2509demo-shared-shared-bkt",
+        "arn:aws:s3:::i2509demo-shared-shared-bkt-92307513",
+        "arn:aws:s3:::i2509demo_shared-shared-bkt"
+      ]
     }
   ]
 }
