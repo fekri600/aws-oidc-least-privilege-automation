@@ -1,0 +1,126 @@
+./
+├── bootstrap/
+│   ├── data/
+│   │   ├── asw-data/
+│   │   │   ├── data.tf
+│   │   │   └── outputs.tf
+│   │   └── repo-data/
+│   │       ├── data.tf
+│   │       ├── get_repo.sh*
+│   │       └── outputs.tf
+│   ├── modules/
+│   │   ├── backend-bucket/
+│   │   │   ├── generate-backend-file.sh
+│   │   │   ├── main.tf
+│   │   │   ├── outputs.tf
+│   │   │   └── variables.tf
+│   │   ├── cloudtrail-lack/
+│   │   │   ├── main.tf
+│   │   │   └── outputs.tf
+│   │   ├── couldtrail/
+│   │   │   ├── access-analyzer-permissions-policy.json
+│   │   │   ├── access-analyzer-trust-policy.json
+│   │   │   ├── cloudtrail-s3-policy.json
+│   │   │   ├── main.tf
+│   │   │   └── outputs.tf
+│   │   └── oidc/
+│   │       ├── policies/
+│   │       │   ├── permission-policy.json
+│   │       │   └── trust-policy.json
+│   │       ├── locals.tf
+│   │       ├── main.tf
+│   │       ├── outputs.tf
+│   │       └── variables.tf
+│   ├── bootstrap_diagram.png
+│   ├── main.tf
+│   ├── outputs.tf
+│   ├── providers.tf
+│   ├── random.tf
+│   ├── terraform.auto.tfvars
+│   ├── terraform.tfstate
+│   ├── terraform.tfstate.backup
+│   ├── variables.tf
+│   └── version.tf
+├── env/
+│   ├── prod/
+│   │   ├── us-east-1/
+│   │   │   ├── dns/
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   └── variables.tf
+│   │   │   ├── networking/
+│   │   │   │   ├── data.tf
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   ├── variables.tf
+│   │   │   │   └── version.tf
+│   │   │   ├── queuing/
+│   │   │   │   ├── main.tf
+│   │   │   │   ├── outputs.tf
+│   │   │   │   └── variables.tf
+│   │   │   └── security/
+│   │   │       ├── main.tf
+│   │   │       ├── outputs.tf
+│   │   │       └── variables.tf
+│   │   └── us-west-1/
+│   │       └── networking/
+│   │           ├── data.tf
+│   │           ├── main.tf
+│   │           ├── outputs.tf
+│   │           ├── variables.tf
+│   │           └── version.tf
+│   └── shared/
+│       └── global/
+│           └── storage/
+│               ├── main.tf
+│               └── variables.tf
+├── modules/
+│   ├── ipam/
+│   │   ├── cleanup.tf
+│   │   ├── ipam_provider.py*
+│   │   ├── ipam_state.json
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── route53-record/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── route53-zone/
+│   │   ├── mian.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── s3/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── security-group/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── sns/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── variables.tf
+│   ├── subnet/
+│   │   ├── main.tf
+│   │   ├── outputs.tf
+│   │   └── varaibles.tf
+│   └── vpc/
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── varaibles.tf
+├── services/
+│   └── query-ct-lack/
+│       └── ci_least_priv.py
+├── backend.tf
+├── layout.svg
+├── LICENSE
+├── local.tf
+├── main.tf
+├── Makefile
+├── providers.tf
+├── README.md
+└── version.tf
+
+34 directories, 90 files

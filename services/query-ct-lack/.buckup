@@ -3,17 +3,12 @@ import argparse
 import json
 import time
 import datetime as dt
-from typing import Any, Dict, List, Optional, Set, Tuple, Iterable
-import re
-from collections import defaultdict
-import os
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import boto3
 from botocore.exceptions import ClientError
 
-# -------------------------
-# Noise filtering (unchanged)
-# -------------------------
+# Noise filtering
 NOISE_ACTIONS = {
     "sts:GetCallerIdentity",
     "cloudtrail:StartQuery",
@@ -25,9 +20,6 @@ NOISE_PREFIXES = (
 
 DEFAULT_PRESERVE_SIDS = {"S3StateManagement"}
 
-# -------------------------
-# Small utils
-# -------------------------
 def jdump(obj: Any) -> str:
     try:
         return json.dumps(obj, indent=2, default=str)
@@ -37,15 +29,12 @@ def jdump(obj: Any) -> str:
 def log(msg: str) -> None:
     print(msg, flush=True)
 
-# -------------------------
-# Access Analyzer helpers
-# -------------------------
 def wait_policy(access, job_id: str, timeout_s: int = 900, poll_s: int = 4) -> Dict[str, Any]:
     t0 = time.time()
     while True:
         r = access.get_generated_policy(
             jobId=job_id,
-            includeResourcePlaceholders=True,       # keep placeholders; we resolve them ourselves
+            includeResourcePlaceholders=True,
             includeServiceLevelTemplate=False,
         )
         status = r["jobDetails"]["status"]
@@ -94,9 +83,6 @@ def extract_service_error(result: Dict[str, Any]) -> Optional[str]:
         return e
     return None
 
-# -------------------------
-# S3 placeholder (you already had this)
-# -------------------------
 def s3_buckets_used_by_principal(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Set[str]:
     buckets: Set[str] = set()
     next_token = None
@@ -148,6 +134,7 @@ def replace_s3_placeholders(statements: List[Dict[str, Any]], s3_bucket_names: S
     if not s3_bucket_names:
         return statements
     concrete_arns = [f"arn:aws:s3:::{b}" for b in sorted(s3_bucket_names)]
+
     out: List[Dict[str, Any]] = []
     for s in statements:
         res = s.get("Resource")
@@ -167,9 +154,6 @@ def replace_s3_placeholders(statements: List[Dict[str, Any]], s3_bucket_names: S
         out.append(s)
     return out
 
-# -------------------------
-# Existing policy load/merge
-# -------------------------
 def load_existing_policy(path: str) -> Optional[Dict[str, Any]]:
     try:
         with open(path, "r") as f:
@@ -198,211 +182,6 @@ def dedup_statements(stmts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         out.append(s)
     return out
 
-# -------------------------
-# NEW: generic placeholder / ARN bucketing
-# -------------------------
-PLACEHOLDER_RE = re.compile(r"\$\{[^}]+\}")
-# arn:aws:<service>:<region>:<account>:<resource-part>
-ARN_RE = re.compile(r"^arn:aws[a-zA-Z-]*:([^:]*):([^:]*):([^:]*):(.*)$")
-
-def _iter_strings(obj: Any) -> Iterable[str]:
-    if isinstance(obj, str):
-        yield obj
-    elif isinstance(obj, dict):
-        for v in obj.values():
-            yield from _iter_strings(v)
-    elif isinstance(obj, list):
-        for v in obj:
-            yield from _iter_strings(v)
-
-def bucket_from_arn(arn: str) -> Optional[str]:
-    m = ARN_RE.match(arn)
-    if not m:
-        return None
-    service, _region, _account, resource_part = m.groups()
-    # resource kind up to / or :
-    sep_idx = len(resource_part)
-    for ch in ("/", ":"):
-        i = resource_part.find(ch)
-        if i != -1:
-            sep_idx = min(sep_idx, i)
-    kind = resource_part[:sep_idx] if sep_idx > 0 else resource_part
-    if not service or not kind:
-        return None
-    return f"{service}:{kind}"
-
-def bucket_from_placeholder(resource_str: str) -> Optional[str]:
-    # Strip ${...} tokens for parsing while preserving structure
-    stripped = PLACEHOLDER_RE.sub("X", resource_str)
-    m = ARN_RE.match(stripped)
-    if not m:
-        return None
-    service, _region, _account, resource_part = m.groups()
-    sep_idx = len(resource_part)
-    for ch in ("/", ":"):
-        i = resource_part.find(ch)
-        if i != -1:
-            sep_idx = min(sep_idx, i)
-    kind = resource_part[:sep_idx] if sep_idx > 0 else resource_part
-    if not service or not kind:
-        return None
-    return f"{service}:{kind}"
-
-def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Dict[str, Set[str]]:
-    used: Dict[str, Set[str]] = defaultdict(set)
-    next_token = None
-
-    def _principal_matches(ev_detail: Dict[str, Any]) -> bool:
-        ui = ev_detail.get("userIdentity") or {}
-        arn = ui.get("arn")
-        if arn == principal_arn:
-            return True
-        if ui.get("type") == "AssumedRole":
-            issuer = ((ui.get("sessionContext") or {}).get("sessionIssuer") or {})
-            if issuer.get("arn") == principal_arn:
-                return True
-        return False
-
-    while True:
-        kwargs = {"StartTime": start, "EndTime": end, "MaxResults": 50}
-        if next_token:
-            kwargs["NextToken"] = next_token
-        resp = cloudtrail.lookup_events(**kwargs)
-        for e in resp.get("Events", []):
-            try:
-                detail = json.loads(e.get("CloudTrailEvent", "{}"))
-            except Exception:
-                continue
-            if not _principal_matches(detail):
-                continue
-            for r in detail.get("resources") or []:
-                name = r.get("resourceName")
-                if isinstance(name, str) and name.startswith("arn:aws"):
-                    b = bucket_from_arn(name)
-                    if b:
-                        used[b].add(name)
-        next_token = resp.get("NextToken")
-        if not next_token:
-            break
-    return used
-
-# -------------------------
-# NEW: read Terraform state automatically from backend.tf (S3)
-# -------------------------
-BACKEND_BUCKET_RE = re.compile(r'^\s*bucket\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
-BACKEND_KEY_RE    = re.compile(r'^\s*key\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
-BACKEND_REGION_RE = re.compile(r'^\s*region\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
-
-def parse_backend_tf(path: str) -> Optional[Tuple[str, str, str]]:
-    """Return (bucket, key, region) from a simple s3 backend block in backend.tf."""
-    try:
-        with open(path, "r") as f:
-            data = f.read()
-    except FileNotFoundError:
-        return None
-    b = BACKEND_BUCKET_RE.search(data)
-    k = BACKEND_KEY_RE.search(data)
-    r = BACKEND_REGION_RE.search(data)
-    if b and k and r:
-        return (b.group(1), k.group(1), r.group(1))
-    return None
-
-def load_tf_state_from_backend(backend_path: str) -> Optional[Dict[str, Any]]:
-    cfg = parse_backend_tf(backend_path)
-    if not cfg:
-        log("[*] No backend.tf found or could not parse S3 backend; skipping TF state.")
-        return None
-    bucket, key, region = cfg
-    log(f"[*] Reading Terraform state from s3://{bucket}/{key} (region {region})")
-    s3 = boto3.client("s3", region_name=region)
-    try:
-        obj = s3.get_object(Bucket=bucket, Key=key)
-        return json.loads(obj["Body"].read())
-    except Exception as e:
-        log(f"[!] Failed to read Terraform state: {e}")
-        return None
-
-def arns_from_tf_state_generic(state: Dict[str, Any]) -> Dict[str, Set[str]]:
-    """Harvest ANY ARN that appears in TF state, bucketed by <service>:<kind>."""
-    out: Dict[str, Set[str]] = defaultdict(set)
-    if not state:
-        return out
-    for res in state.get("resources", []):
-        for inst in res.get("instances", []):
-            attrs = inst.get("attributes") or {}
-            for s in _iter_strings(attrs):
-                if isinstance(s, str) and s.startswith("arn:aws"):
-                    b = bucket_from_arn(s)
-                    if b:
-                        out[b].add(s)
-    return out
-
-def merge_evidence(a: Dict[str, Set[str]], b: Dict[str, Set[str]], mode: str = "union") -> Dict[str, Set[str]]:
-    keys = set(a.keys()) | set(b.keys())
-    out: Dict[str, Set[str]] = {}
-    for k in keys:
-        if mode == "cloudtrail":
-            out[k] = set(a.get(k, set()))
-        elif mode == "tfstate":
-            out[k] = set(b.get(k, set()))
-        elif mode == "intersection":
-            out[k] = set(a.get(k, set())) & set(b.get(k, set()))
-        else:  # union
-            out[k] = set(a.get(k, set())) | set(b.get(k, set()))
-    return out
-
-def replace_any_placeholders_with_bucket_arns(statements: List[Dict[str, Any]],
-                                              bucket_to_arns: Dict[str, Set[str]],
-                                              preserved_sids: Set[str],
-                                              drop_unresolved: bool = False) -> List[Dict[str, Any]]:
-    out: List[Dict[str, Any]] = []
-    for s in statements:
-        sid = s.get("Sid")
-        if sid in preserved_sids:
-            out.append(s)
-            continue
-
-        res = s.get("Resource")
-        if res is None:
-            out.append(s)
-            continue
-
-        items = res if isinstance(res, list) else [res]
-        new_items: List[str] = []
-        changed = False
-        unresolved = False
-
-        for it in items:
-            if not (isinstance(it, str) and PLACEHOLDER_RE.search(it)):
-                new_items.append(it)
-                continue
-
-            bucket = bucket_from_placeholder(it)
-            if not bucket:
-                new_items.append(it)
-                unresolved = True
-                continue
-
-            arns = sorted(bucket_to_arns.get(bucket, set()))
-            if arns:
-                new_items.extend(arns)
-                changed = True
-            else:
-                new_items.append(it)
-                unresolved = True
-
-        if drop_unresolved and unresolved:
-            # Skip this statement entirely if any placeholder remains
-            continue
-
-        if changed:
-            s = {**s, "Resource": new_items if isinstance(res, list) else (new_items[0] if new_items else res)}
-        out.append(s)
-    return out
-
-# -------------------------
-# Main
-# -------------------------
 def main() -> None:
     ap = argparse.ArgumentParser(description="Generate least-priv IAM policy via IAM Access Analyzer from CloudTrail evidence")
     ap.add_argument("--principal-arn", required=True, help="Role/User ARN to analyze")
@@ -414,13 +193,6 @@ def main() -> None:
     ap.add_argument("--keep-star-resources", action="store_true", help="Keep statements with Resource:'*' (default: drop)")
     ap.add_argument("--preserve-sids", default=",".join(sorted(DEFAULT_PRESERVE_SIDS)),
                     help="Comma-separated list of Sid values to preserve from existing policy file")
-    # NEW flags
-    ap.add_argument("--backend-path", default="backend.tf", help="Path to Terraform backend.tf for auto-loading S3 state")
-    ap.add_argument("--evidence-source", choices=["cloudtrail", "tfstate", "union", "intersection"], default="union",
-                    help="Which evidence to use when replacing placeholders (default: union)")
-    ap.add_argument("--drop-unresolved-placeholders", action="store_true",
-                    help="Drop any non-preserved statements that still contain ${...} after replacement")
-
     args = ap.parse_args()
 
     end = dt.datetime.utcnow().replace(microsecond=0)
@@ -465,9 +237,6 @@ def main() -> None:
     if not isinstance(statements, list):
         statements = [statements]
 
-    # ----------------------------------
-    # Filter noise
-    # ----------------------------------
     def keep_action(action: str) -> bool:
         if action in NOISE_ACTIONS:
             return False
@@ -476,6 +245,7 @@ def main() -> None:
                 return False
         return True
 
+    # Filter noise
     filtered: List[Dict[str, Any]] = []
     for s in statements:
         acts = s.get("Action")
@@ -489,39 +259,11 @@ def main() -> None:
             s = {**s, "Action": acts}
         filtered.append(s)
 
-    # ----------------------------------
-    # S3 placeholders → concrete buckets from CloudTrail
-    # ----------------------------------
+    # Replace S3 placeholders with concrete buckets used by this principal
     used_buckets = s3_buckets_used_by_principal(cloudtrail, args.principal_arn, start, end)
     filtered = replace_s3_placeholders(filtered, used_buckets)
 
-    # ----------------------------------
-    # Generic placeholder replacement using CloudTrail + TF state evidence
-    # ----------------------------------
-    # 1) Evidence from CloudTrail (generic harvest of ANY ARN)
-    used_ct = collect_used_arns_from_cloudtrail_generic(cloudtrail, args.principal_arn, start, end)
-
-    # 2) Evidence from Terraform remote state (auto-read from backend.tf)
-    tf_state = load_tf_state_from_backend(args.backend_path)
-    used_tf = arns_from_tf_state_generic(tf_state) if tf_state else {}
-
-    # 3) Merge evidence sets
-    evidence = merge_evidence(used_ct, used_tf, mode=args.evidence_source)
-
-    # 4) Preserve SIDs (e.g., keep S3StateManagement exactly as-is)
-    preserve_sids = {s.strip() for s in (args.preserve_sids or "").split(",") if s.strip()}
-
-    # 5) Replace ANY placeholders by bucket match
-    filtered = replace_any_placeholders_with_bucket_arns(
-        filtered,
-        bucket_to_arns=evidence,
-        preserved_sids=preserve_sids,
-        drop_unresolved=args.drop_unresolved_placeholders
-    )
-
-    # ----------------------------------
     # Optionally drop star resources
-    # ----------------------------------
     tmp: List[Dict[str, Any]] = []
     for s in filtered:
         res = s.get("Resource")
@@ -531,10 +273,9 @@ def main() -> None:
         tmp.append(s)
     generated_out = tmp
 
-    # ----------------------------------
-    # Preserve specific statements from existing file (e.g., S3StateManagement)
-    # ----------------------------------
+    # Preserve specific statements from existing file (e.g., your S3StateManagement block)
     existing = load_existing_policy(args.policy_path)
+    preserve_sids = {s.strip() for s in (args.preserve_sids or "").split(",") if s.strip()}
     preserved: List[Dict[str, Any]] = []
     if existing:
         ex_statements = existing.get("Statement", [])
@@ -543,14 +284,10 @@ def main() -> None:
         keep, _rest = split_preserved(ex_statements, preserve_sids)
         preserved = keep
 
-    # ----------------------------------
-    # Merge preserved + generated, dedup, write
-    # ----------------------------------
+    # Merge preserved + generated, dedup, and write
     final_statements = dedup_statements(preserved + generated_out)
     policy_out = {"Version": "2012-10-17", "Statement": final_statements}
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(args.policy_path), exist_ok=True)
     with open(args.policy_path, "w") as f:
         json.dump(policy_out, f, indent=2)
     log(f"[+] Wrote least-privilege policy to {args.policy_path}")
