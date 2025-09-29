@@ -151,9 +151,7 @@ def bucket_from_arn(arn: str) -> Optional[str]:
         return None
     service, _region, _account, resource_part = m.groups()
     if service == "s3":
-        # Buckets are just names; normalize as a single kind
         return "s3:bucket"
-    # resource kind up to / or :
     sep_idx = len(resource_part)
     for ch in ("/", ":"):
         i = resource_part.find(ch)
@@ -165,14 +163,12 @@ def bucket_from_arn(arn: str) -> Optional[str]:
     return f"{service}:{kind}"
 
 def bucket_from_placeholder(resource_str: str) -> Optional[str]:
-    # Strip ${...} tokens for parsing while preserving structure
     stripped = PLACEHOLDER_RE.sub("X", resource_str)
     m = ARN_RE.match(stripped)
     if not m:
         return None
     service, _region, _account, resource_part = m.groups()
     if service == "s3":
-        # "arn:aws:s3:::${BucketName}" → s3:bucket
         return "s3:bucket"
     sep_idx = len(resource_part)
     for ch in ("/", ":"):
@@ -196,28 +192,18 @@ def flatten(obj: Any):
         yield obj
 
 def extract_candidate_strings_from_event(detail: Dict[str, Any]) -> Set[str]:
-    """
-    Collect generic candidates from a CloudTrail event:
-      - Any string in requestParameters/responseElements whose key ends with Arn/Id/Name
-      - Any resources[].resourceName
-    Returns raw tokens (could be ARNs, IDs, or names). S3 bucket names are normalized to ARNs.
-    """
     out: Set[str] = set()
-
-    # resources[].resourceName
     for r in detail.get("resources") or []:
         rn = r.get("resourceName")
         if isinstance(rn, str) and rn:
             out.add(rn)
-
-    # requestParameters / responseElements
     def harvest_kv(d: Dict[str, Any]):
         for k, v in d.items():
             if isinstance(v, (dict, list)):
                 for leaf in flatten(v):
                     if isinstance(leaf, str) and leaf:
                         if k in BUCKET_NAME_KEYS:
-                            out.add(f"arn:aws:s3:::{leaf}")  # normalize bucket names
+                            out.add(f"arn:aws:s3:::{leaf}")
                         elif ID_KEY_RE.search(k):
                             out.add(leaf)
             else:
@@ -226,17 +212,11 @@ def extract_candidate_strings_from_event(detail: Dict[str, Any]) -> Set[str]:
                         out.add(f"arn:aws:s3:::{v}")
                     elif ID_KEY_RE.search(k):
                         out.add(v)
-
     harvest_kv(detail.get("requestParameters") or {})
     harvest_kv(detail.get("responseElements") or {})
-
     return out
 
 def resource_explorer_search_strings(strings: Set[str], regions: Optional[List[str]] = None) -> Set[str]:
-    """
-    Use AWS Resource Explorer v2 to resolve IDs/names into ARNs (generic, no per-service code).
-    Gracefully degrades if the API is disabled or not permitted.
-    """
     arns: Set[str] = set()
     candidate_regions = regions or []
     if not candidate_regions:
@@ -244,17 +224,14 @@ def resource_explorer_search_strings(strings: Set[str], regions: Optional[List[s
             candidate_regions = [boto3.session.Session().region_name or "us-east-1"]
         except Exception:
             candidate_regions = ["us-east-1"]
-
-    for reg in dict.fromkeys(candidate_regions):  # dedupe keep order
+    for reg in dict.fromkeys(candidate_regions):
         try:
             rex = boto3.client("resource-explorer-2", region_name=reg)
         except Exception:
             continue
-
         for s in strings:
             if isinstance(s, str) and s.startswith("arn:aws"):
-                arns.add(s)
-                continue
+                arns.add(s); continue
             try:
                 resp = rex.search(QueryString=s, MaxResults=100)
                 for r in resp.get("Resources", []):
@@ -276,7 +253,6 @@ def resource_explorer_search_strings(strings: Set[str], regions: Optional[List[s
     return arns
 
 def bucketize_arns(arns: Set[str]) -> Dict[str, Set[str]]:
-    """Map ARN → bucket '<service>:<kind>' using bucket_from_arn()."""
     out: Dict[str, Set[str]] = defaultdict(set)
     for a in arns:
         b = bucket_from_arn(a)
@@ -288,12 +264,6 @@ def bucketize_arns(arns: Set[str]) -> Dict[str, Set[str]]:
 # CloudTrail → evidence (generic)
 # -------------------------
 def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Dict[str, Set[str]]:
-    """
-    Generic collection:
-      - take any ARN already present in resources[]
-      - harvest generic candidates (IDs/names) from event payloads
-      - resolve them to ARNs via Resource Explorer (no per-service code)
-    """
     found_arns: Set[str] = set()
     id_or_name_candidates: Set[str] = set()
     trail_regions: Set[str] = set()
@@ -324,12 +294,10 @@ def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, st
             if not _principal_matches(detail):
                 continue
 
-            # Track regions (helps with Resource Explorer)
             reg = detail.get("awsRegion")
             if isinstance(reg, str) and reg:
                 trail_regions.add(reg)
 
-            # 1) Any explicit ARNs
             for r in detail.get("resources") or []:
                 rn = r.get("resourceName")
                 if isinstance(rn, str) and rn.startswith("arn:aws"):
@@ -338,14 +306,12 @@ def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, st
                     if isinstance(rn, str) and rn:
                         id_or_name_candidates.add(rn)
 
-            # 2) Generic candidates from payloads
             id_or_name_candidates |= extract_candidate_strings_from_event(detail)
 
         next_token = resp.get("NextToken")
         if not next_token:
             break
 
-    # Resolve candidates to ARNs generically
     resolved = resource_explorer_search_strings(id_or_name_candidates, regions=list(trail_regions) or None)
     found_arns |= resolved
 
@@ -359,7 +325,6 @@ BACKEND_KEY_RE    = re.compile(r'^\s*key\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
 BACKEND_REGION_RE = re.compile(r'^\s*region\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
 
 def parse_backend_tf(path: str) -> Optional[Tuple[str, str, str]]:
-    """Return (bucket, key, region) from a simple s3 backend block in backend.tf."""
     try:
         with open(path, "r") as f:
             data = f.read()
@@ -388,7 +353,6 @@ def load_tf_state_from_backend(backend_path: str) -> Optional[Dict[str, Any]]:
         return None
 
 def arns_from_tf_state_generic(state: Dict[str, Any]) -> Dict[str, Set[str]]:
-    """Harvest ANY ARN that appears in TF state, bucketed by <service>:<kind>."""
     out: Dict[str, Set[str]] = defaultdict(set)
     if not state:
         return out
@@ -460,7 +424,6 @@ def replace_any_placeholders_with_bucket_arns(statements: List[Dict[str, Any]],
                 unresolved = True
 
         if drop_unresolved and unresolved:
-            # Skip this statement entirely if any placeholder remains
             continue
 
         if changed:
@@ -469,44 +432,34 @@ def replace_any_placeholders_with_bucket_arns(statements: List[Dict[str, Any]],
     return out
 
 # -------------------------
-# NEW: wildcardize variable tokens in Resource
+# Wildcardize variable tokens in Resource (ALWAYS ON)
 # -------------------------
 def _wildcardize_from_first_variable(s: str) -> str:
     """
-    If a string contains a ${...} token, replace everything from the first token to the end with '*'.
+    Replace everything from the first ${...} token to the end with '*'.
     Examples:
-      arn:aws:route53:::change/${Id}                      -> arn:aws:route53:::change/*
+      arn:aws:route53:::change/${Id} -> arn:aws:route53:::change/*
       arn:aws:ec2:${Region}:${Account}:security-group/${SecurityGroupId} -> arn:aws:ec2:*
     """
     m = PLACEHOLDER_RE.search(s)
-    if not m:
-        return s
-    return s[:m.start()] + "*"
+    return s if not m else (s[:m.start()] + "*")
 
 def wildcardize_variable_resources(statements: List[Dict[str, Any]],
                                    preserved_sids: Set[str]) -> List[Dict[str, Any]]:
-    """
-    Post-process pass: for any Resource value (str or list) that still contains ${...},
-    replace from the first ${...} to the end with a single '*'.
-    """
     out: List[Dict[str, Any]] = []
     for s in statements:
-        sid = s.get("Sid")
-        if sid in preserved_sids:
-            out.append(s)
-            continue
+        if s.get("Sid") in preserved_sids:
+            out.append(s); continue
         res = s.get("Resource")
         if res is None:
-            out.append(s)
-            continue
+            out.append(s); continue
 
         if isinstance(res, list):
-            new_res = []
             changed = False
+            new_res = []
             for r in res:
                 if isinstance(r, str) and PLACEHOLDER_RE.search(r):
-                    new_res.append(_wildcardize_from_first_variable(r))
-                    changed = True
+                    new_res.append(_wildcardize_from_first_variable(r)); changed = True
                 else:
                     new_res.append(r)
             if changed:
@@ -530,14 +483,11 @@ def main() -> None:
     ap.add_argument("--keep-star-resources", action="store_true", help="Keep statements with Resource:'*' (default: drop)")
     ap.add_argument("--preserve-sids", default=",".join(sorted(DEFAULT_PRESERVE_SIDS)),
                     help="Comma-separated list of Sid values to preserve from existing policy file")
-    # NEW flags
     ap.add_argument("--backend-path", default="backend.tf", help="Path to Terraform backend.tf for auto-loading S3 state")
     ap.add_argument("--evidence-source", choices=["cloudtrail", "tfstate", "union", "intersection"], default="union",
                     help="Which evidence to use when replacing placeholders (default: union)")
     ap.add_argument("--drop-unresolved-placeholders", action="store_true",
-                    help="Drop any non-preserved statements that still contain ${...} after replacement")
-    ap.add_argument("--wildcardize-var-resources", action="store_true",
-                    help="After replacement, turn any remaining ${...} in Resource into '*' from the first variable onward")
+                    help="Drop statements that still contain ${...} after replacement")
     args = ap.parse_args()
 
     end = dt.datetime.utcnow().replace(microsecond=0)
@@ -609,20 +559,13 @@ def main() -> None:
     # ----------------------------------
     # Generic placeholder replacement using CloudTrail + TF state evidence
     # ----------------------------------
-    # 1) Evidence from CloudTrail (generic harvest + Resource Explorer)
     used_ct = collect_used_arns_from_cloudtrail_generic(cloudtrail, args.principal_arn, start, end)
-
-    # 2) Evidence from Terraform remote state (auto-read from backend.tf)
     tf_state = load_tf_state_from_backend(args.backend_path)
     used_tf = arns_from_tf_state_generic(tf_state) if tf_state else {}
-
-    # 3) Merge evidence sets
     evidence = merge_evidence(used_ct, used_tf, mode=args.evidence_source)
 
-    # 4) Preserve SIDs (e.g., keep S3StateManagement exactly as-is)
     preserve_sids = {s.strip() for s in (args.preserve_sids or "").split(",") if s.strip()}
 
-    # 5) Replace ANY placeholders by bucket match
     filtered = replace_any_placeholders_with_bucket_arns(
         filtered,
         bucket_to_arns=evidence,
@@ -630,9 +573,12 @@ def main() -> None:
         drop_unresolved=args.drop_unresolved_placeholders
     )
 
-    # 6) NEW: wildcardize remaining ${...} in Resource from the first variable onward
-    if args.wildcardize_var_resources:
-        filtered = wildcardize_variable_resources(filtered, preserved_sids=preserve_sids)
+    # ALWAYS wildcardize any remaining ${...} in Resource from the first variable onward
+    before = json.dumps(filtered, sort_keys=True)
+    filtered = wildcardize_variable_resources(filtered, preserved_sids=preserve_sids)
+    after = json.dumps(filtered, sort_keys=True)
+    if before != after:
+        log("[+] Wildcardized variable tokens in Resource (e.g., arn:.../${Id} → arn:.../*)")
 
     # ----------------------------------
     # Optionally drop star resources
