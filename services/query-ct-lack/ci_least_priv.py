@@ -10,9 +10,10 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
+import botocore
 
 # -------------------------
-# Noise filtering (unchanged)
+# Noise filtering
 # -------------------------
 NOISE_ACTIONS = {
     "sts:GetCallerIdentity",
@@ -45,7 +46,7 @@ def wait_policy(access, job_id: str, timeout_s: int = 900, poll_s: int = 4) -> D
     while True:
         r = access.get_generated_policy(
             jobId=job_id,
-            includeResourcePlaceholders=True,       # keep placeholders; we resolve them ourselves
+            includeResourcePlaceholders=True,  # keep placeholders; we resolve them
             includeServiceLevelTemplate=False,
         )
         status = r["jobDetails"]["status"]
@@ -95,79 +96,6 @@ def extract_service_error(result: Dict[str, Any]) -> Optional[str]:
     return None
 
 # -------------------------
-# S3 placeholder (you already had this)
-# -------------------------
-def s3_buckets_used_by_principal(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Set[str]:
-    buckets: Set[str] = set()
-    next_token = None
-
-    def _principal_matches(ev_detail: Dict[str, Any]) -> bool:
-        ui = ev_detail.get("userIdentity") or {}
-        arn = ui.get("arn")
-        if arn == principal_arn:
-            return True
-        if ui.get("type") == "AssumedRole":
-            issuer = ((ui.get("sessionContext") or {}).get("sessionIssuer") or {})
-            if issuer.get("arn") == principal_arn:
-                return True
-        return False
-
-    while True:
-        kwargs = {"StartTime": start, "EndTime": end, "MaxResults": 50}
-        if next_token:
-            kwargs["NextToken"] = next_token
-        resp = cloudtrail.lookup_events(**kwargs)
-        for e in resp.get("Events", []):
-            try:
-                detail = json.loads(e.get("CloudTrailEvent", "{}"))
-            except Exception:
-                continue
-            if not _principal_matches(detail):
-                continue
-
-            rp = detail.get("requestParameters") or {}
-            bn = rp.get("bucketName")
-            if isinstance(bn, str) and bn:
-                buckets.add(bn)
-
-            for r in detail.get("resources") or []:
-                if r.get("resourceType") in ("AWS::S3::Bucket", "s3"):
-                    name = r.get("resourceName")
-                    if isinstance(name, str) and name:
-                        if name.startswith("arn:aws:s3:::"):
-                            name = name.split("arn:aws:s3:::", 1)[1]
-                        buckets.add(name)
-
-        next_token = resp.get("NextToken")
-        if not next_token:
-            break
-
-    return buckets
-
-def replace_s3_placeholders(statements: List[Dict[str, Any]], s3_bucket_names: Set[str]) -> List[Dict[str, Any]]:
-    if not s3_bucket_names:
-        return statements
-    concrete_arns = [f"arn:aws:s3:::{b}" for b in sorted(s3_bucket_names)]
-    out: List[Dict[str, Any]] = []
-    for s in statements:
-        res = s.get("Resource")
-        if isinstance(res, str) and res == "arn:aws:s3:::${BucketName}":
-            s = {**s, "Resource": concrete_arns}
-        elif isinstance(res, list):
-            replaced = []
-            changed = False
-            for r in res:
-                if r == "arn:aws:s3:::${BucketName}":
-                    replaced.extend(concrete_arns)
-                    changed = True
-                else:
-                    replaced.append(r)
-            if changed:
-                s = {**s, "Resource": replaced}
-        out.append(s)
-    return out
-
-# -------------------------
 # Existing policy load/merge
 # -------------------------
 def load_existing_policy(path: str) -> Optional[Dict[str, Any]]:
@@ -199,11 +127,13 @@ def dedup_statements(stmts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return out
 
 # -------------------------
-# NEW: generic placeholder / ARN bucketing
+# Generic placeholder / ARN bucketing
 # -------------------------
 PLACEHOLDER_RE = re.compile(r"\$\{[^}]+\}")
 # arn:aws:<service>:<region>:<account>:<resource-part>
 ARN_RE = re.compile(r"^arn:aws[a-zA-Z-]*:([^:]*):([^:]*):([^:]*):(.*)$")
+ID_KEY_RE = re.compile(r"(?:^|[A-Za-z])(?:Id|ID|Arn|ARN|Name)$")
+BUCKET_NAME_KEYS = {"bucketName", "Bucket", "bucket"}  # normalize S3 bucket names to ARNs
 
 def _iter_strings(obj: Any) -> Iterable[str]:
     if isinstance(obj, str):
@@ -220,6 +150,9 @@ def bucket_from_arn(arn: str) -> Optional[str]:
     if not m:
         return None
     service, _region, _account, resource_part = m.groups()
+    if service == "s3":
+        # Buckets are just names; normalize as a single kind
+        return "s3:bucket"
     # resource kind up to / or :
     sep_idx = len(resource_part)
     for ch in ("/", ":"):
@@ -238,6 +171,9 @@ def bucket_from_placeholder(resource_str: str) -> Optional[str]:
     if not m:
         return None
     service, _region, _account, resource_part = m.groups()
+    if service == "s3":
+        # "arn:aws:s3:::${BucketName}" → s3:bucket
+        return "s3:bucket"
     sep_idx = len(resource_part)
     for ch in ("/", ":"):
         i = resource_part.find(ch)
@@ -248,14 +184,119 @@ def bucket_from_placeholder(resource_str: str) -> Optional[str]:
         return None
     return f"{service}:{kind}"
 
+# --- Generic helpers (Resource Explorer powered) ---
+def flatten(obj: Any):
+    if isinstance(obj, dict):
+        for v in obj.values():
+            yield from flatten(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from flatten(v)
+    else:
+        yield obj
 
+def extract_candidate_strings_from_event(detail: Dict[str, Any]) -> Set[str]:
+    """
+    Collect generic candidates from a CloudTrail event:
+      - Any string in requestParameters/responseElements whose key ends with Arn/Id/Name
+      - Any resources[].resourceName
+    Returns raw tokens (could be ARNs, IDs, or names). S3 bucket names are normalized to ARNs.
+    """
+    out: Set[str] = set()
+
+    # resources[].resourceName
+    for r in detail.get("resources") or []:
+        rn = r.get("resourceName")
+        if isinstance(rn, str) and rn:
+            out.add(rn)
+
+    # requestParameters / responseElements
+    def harvest_kv(d: Dict[str, Any]):
+        for k, v in d.items():
+            if isinstance(v, (dict, list)):
+                for leaf in flatten(v):
+                    if isinstance(leaf, str) and leaf:
+                        if k in BUCKET_NAME_KEYS:
+                            out.add(f"arn:aws:s3:::{leaf}")  # normalize bucket names
+                        elif ID_KEY_RE.search(k):
+                            out.add(leaf)
+            else:
+                if isinstance(v, str) and v:
+                    if k in BUCKET_NAME_KEYS:
+                        out.add(f"arn:aws:s3:::{v}")
+                    elif ID_KEY_RE.search(k):
+                        out.add(v)
+
+    harvest_kv(detail.get("requestParameters") or {})
+    harvest_kv(detail.get("responseElements") or {})
+
+    return out
+
+def resource_explorer_search_strings(strings: Set[str], regions: Optional[List[str]] = None) -> Set[str]:
+    """
+    Use AWS Resource Explorer v2 to resolve IDs/names into ARNs (generic, no per-service code).
+    Gracefully degrades if the API is disabled or not permitted.
+    """
+    arns: Set[str] = set()
+    candidate_regions = regions or []
+    if not candidate_regions:
+        try:
+            candidate_regions = [boto3.session.Session().region_name or "us-east-1"]
+        except Exception:
+            candidate_regions = ["us-east-1"]
+
+    for reg in dict.fromkeys(candidate_regions):  # dedupe keep order
+        try:
+            rex = boto3.client("resource-explorer-2", region_name=reg)
+        except Exception:
+            continue
+
+        for s in strings:
+            if isinstance(s, str) and s.startswith("arn:aws"):
+                arns.add(s)
+                continue
+            try:
+                resp = rex.search(QueryString=s, MaxResults=100)
+                for r in resp.get("Resources", []):
+                    arn = r.get("Arn")
+                    if isinstance(arn, str) and arn.startswith("arn:aws"):
+                        arns.add(arn)
+                token = resp.get("NextToken")
+                while token:
+                    resp = rex.search(QueryString=s, MaxResults=100, NextToken=token)
+                    for r in resp.get("Resources", []):
+                        arn = r.get("Arn")
+                        if isinstance(arn, str) and arn.startswith("arn:aws"):
+                            arns.add(arn)
+                    token = resp.get("NextToken")
+            except botocore.exceptions.ClientError:
+                continue
+            except Exception:
+                continue
+    return arns
+
+def bucketize_arns(arns: Set[str]) -> Dict[str, Set[str]]:
+    """Map ARN → bucket '<service>:<kind>' using bucket_from_arn()."""
+    out: Dict[str, Set[str]] = defaultdict(set)
+    for a in arns:
+        b = bucket_from_arn(a)
+        if b:
+            out[b].add(a)
+    return out
+
+# -------------------------
+# CloudTrail → evidence (generic)
+# -------------------------
 def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, start: dt.datetime, end: dt.datetime) -> Dict[str, Set[str]]:
     """
-    Generic ARN harvester from CloudTrail, plus a small booster for Route 53:
-    - harvest any ARN in 'resources[]'
-    - also parse requestParameters/responseElements to pick up hostedZoneId (Z...) and change id (C...)
+    Generic collection:
+      - take any ARN already present in resources[]
+      - harvest generic candidates (IDs/names) from event payloads
+      - resolve them to ARNs via Resource Explorer (no per-service code)
     """
-    used: Dict[str, Set[str]] = defaultdict(set)
+    found_arns: Set[str] = set()
+    id_or_name_candidates: Set[str] = set()
+    trail_regions: Set[str] = set()
     next_token = None
 
     def _principal_matches(ev_detail: Dict[str, Any]) -> bool:
@@ -268,13 +309,6 @@ def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, st
             if issuer.get("arn") == principal_arn:
                 return True
         return False
-
-    def _norm_change_id(v: Optional[str]) -> Optional[str]:
-        if not isinstance(v, str) or not v:
-            return None
-        # CloudTrail sometimes records "/change/Cxxxx" or just "Cxxxx"
-        cid = v.split("/")[-1]
-        return cid if cid.startswith("C") else None
 
     while True:
         kwargs = {"StartTime": start, "EndTime": end, "MaxResults": 50}
@@ -290,44 +324,35 @@ def collect_used_arns_from_cloudtrail_generic(cloudtrail, principal_arn: str, st
             if not _principal_matches(detail):
                 continue
 
-            # 1) Any explicit ARNs in event.resources
+            # Track regions (helps with Resource Explorer)
+            reg = detail.get("awsRegion")
+            if isinstance(reg, str) and reg:
+                trail_regions.add(reg)
+
+            # 1) Any explicit ARNs
             for r in detail.get("resources") or []:
-                name = r.get("resourceName")
-                if isinstance(name, str) and name.startswith("arn:aws"):
-                    b = bucket_from_arn(name)
-                    if b:
-                        used[b].add(name)
+                rn = r.get("resourceName")
+                if isinstance(rn, str) and rn.startswith("arn:aws"):
+                    found_arns.add(rn)
+                else:
+                    if isinstance(rn, str) and rn:
+                        id_or_name_candidates.add(rn)
 
-            # 2) Route 53 booster: requestParameters / responseElements
-            rp = detail.get("requestParameters") or {}
-            relem = detail.get("responseElements") or {}
-
-            # Hosted zone ID (global ARN)
-            hz = rp.get("hostedZoneId") or relem.get("hostedZoneId")
-            if isinstance(hz, str) and hz.startswith("Z"):
-                used["route53:hostedzone"].add(f"arn:aws:route53:::hostedzone/{hz}")
-
-            # Change ID can be under several keys; also nested in changeInfo.id for ChangeResourceRecordSets
-            chg = (
-                rp.get("id")
-                or rp.get("changeId")
-                or relem.get("id")
-                or (isinstance(relem.get("changeInfo"), dict) and relem["changeInfo"].get("id"))
-            )
-            cid = _norm_change_id(chg)
-            if cid:
-                used["route53:change"].add(f"arn:aws:route53:::change/{cid}")
+            # 2) Generic candidates from payloads
+            id_or_name_candidates |= extract_candidate_strings_from_event(detail)
 
         next_token = resp.get("NextToken")
         if not next_token:
             break
 
-    return used
+    # Resolve candidates to ARNs generically
+    resolved = resource_explorer_search_strings(id_or_name_candidates, regions=list(trail_regions) or None)
+    found_arns |= resolved
 
-
+    return bucketize_arns(found_arns)
 
 # -------------------------
-# NEW: read Terraform state automatically from backend.tf (S3)
+# Terraform state auto-load from backend.tf (S3)
 # -------------------------
 BACKEND_BUCKET_RE = re.compile(r'^\s*bucket\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
 BACKEND_KEY_RE    = re.compile(r'^\s*key\s*=\s*"([^"]+)"\s*$', re.MULTILINE)
@@ -377,6 +402,9 @@ def arns_from_tf_state_generic(state: Dict[str, Any]) -> Dict[str, Set[str]]:
                         out[b].add(s)
     return out
 
+# -------------------------
+# Evidence merge + replacement
+# -------------------------
 def merge_evidence(a: Dict[str, Set[str]], b: Dict[str, Set[str]], mode: str = "union") -> Dict[str, Set[str]]:
     keys = set(a.keys()) | set(b.keys())
     out: Dict[str, Set[str]] = {}
@@ -460,7 +488,6 @@ def main() -> None:
                     help="Which evidence to use when replacing placeholders (default: union)")
     ap.add_argument("--drop-unresolved-placeholders", action="store_true",
                     help="Drop any non-preserved statements that still contain ${...} after replacement")
-
     args = ap.parse_args()
 
     end = dt.datetime.utcnow().replace(microsecond=0)
@@ -530,15 +557,9 @@ def main() -> None:
         filtered.append(s)
 
     # ----------------------------------
-    # S3 placeholders → concrete buckets from CloudTrail
-    # ----------------------------------
-    used_buckets = s3_buckets_used_by_principal(cloudtrail, args.principal_arn, start, end)
-    filtered = replace_s3_placeholders(filtered, used_buckets)
-
-    # ----------------------------------
     # Generic placeholder replacement using CloudTrail + TF state evidence
     # ----------------------------------
-    # 1) Evidence from CloudTrail (generic harvest of ANY ARN)
+    # 1) Evidence from CloudTrail (generic harvest + Resource Explorer)
     used_ct = collect_used_arns_from_cloudtrail_generic(cloudtrail, args.principal_arn, start, end)
 
     # 2) Evidence from Terraform remote state (auto-read from backend.tf)
@@ -589,8 +610,9 @@ def main() -> None:
     final_statements = dedup_statements(preserved + generated_out)
     policy_out = {"Version": "2012-10-17", "Statement": final_statements}
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(args.policy_path), exist_ok=True)
+    dirn = os.path.dirname(args.policy_path)
+    if dirn:
+        os.makedirs(dirn, exist_ok=True)
     with open(args.policy_path, "w") as f:
         json.dump(policy_out, f, indent=2)
     log(f"[+] Wrote least-privilege policy to {args.policy_path}")
