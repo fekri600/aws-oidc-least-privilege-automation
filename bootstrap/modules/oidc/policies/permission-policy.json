@@ -23,15 +23,20 @@
       "Effect": "Allow",
       "Action": [
         "ec2:AttachInternetGateway",
-        "ec2:CreateInternetGateway"
+        "ec2:CreateInternetGateway",
+        "ec2:DeleteInternetGateway",
+        "ec2:DetachInternetGateway"
       ],
-      "Resource": "arn:aws:ec2:us-east-1:490004637046:internet-gateway/igw-08159c5d73e45dfac"
+      "Resource": "arn:aws:ec2:*"
     },
     {
       "Sid": "SupportedServiceSid2",
       "Effect": "Allow",
-      "Action": "ec2:CreateSubnet",
-      "Resource": "arn:aws:ec2:us-east-1:490004637046:subnet/subnet-0a12dd229de9aafc9"
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:DeleteSubnet"
+      ],
+      "Resource": "arn:aws:ec2:*"
     },
     {
       "Sid": "SupportedServiceSid3",
@@ -40,10 +45,12 @@
         "ec2:AttachInternetGateway",
         "ec2:CreateSubnet",
         "ec2:CreateVpc",
+        "ec2:DeleteVpc",
         "ec2:DescribeVpcAttribute",
+        "ec2:DetachInternetGateway",
         "ec2:ModifyVpcAttribute"
       ],
-      "Resource": "arn:aws:ec2:us-east-1:490004637046:vpc/vpc-0788e03ebb78d6d3a"
+      "Resource": "arn:aws:ec2:*"
     },
     {
       "Sid": "SupportedServiceSid4",
@@ -61,16 +68,18 @@
       "Sid": "SupportedServiceSid6",
       "Effect": "Allow",
       "Action": [
+        "route53:DeleteHostedZone",
         "route53:GetHostedZone",
         "route53:ListResourceRecordSets"
       ],
-      "Resource": "arn:aws:route53:::hostedzone/Z05316652223DOCZMXJF2"
+      "Resource": "arn:aws:route53:::hostedzone/*"
     },
     {
       "Sid": "SupportedServiceSid7",
       "Effect": "Allow",
       "Action": [
         "s3:CreateBucket",
+        "s3:DeleteBucket",
         "s3:GetAccelerateConfiguration",
         "s3:GetBucketLogging",
         "s3:GetBucketObjectLockConfiguration",
