@@ -1,8 +1,8 @@
-# module "prod_us_east_1_network" {
-#   source = "./env/prod/us-east-1/networking"
-#   name_prefix = local.prefix.prod_us_east_1
-#   environment = "prod"
-# }
+module "prod_us_east_1_network" {
+  source = "./env/prod/us-east-1/networking"
+  name_prefix = local.prefix.prod_us_east_1
+  environment = "prod"
+}
 
 module "prod_us_east_1_dns" {
   source = "./env/prod/us-east-1/dns"
