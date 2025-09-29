@@ -19,10 +19,78 @@
       ]
     },
     {
-      "Sid": "all",
+      "Sid": "SupportedServiceSid1",
       "Effect": "Allow",
-      "Action": ["*"],
-      "Resource": ["*"]
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:CreateInternetGateway"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:internet-gateway/igw-08159c5d73e45dfac"
+    },
+    {
+      "Sid": "SupportedServiceSid2",
+      "Effect": "Allow",
+      "Action": "ec2:CreateSubnet",
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:subnet/subnet-0a12dd229de9aafc9"
+    },
+    {
+      "Sid": "SupportedServiceSid3",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:CreateSubnet",
+        "ec2:CreateVpc",
+        "ec2:DescribeVpcAttribute",
+        "ec2:ModifyVpcAttribute"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:vpc/vpc-0788e03ebb78d6d3a"
+    },
+    {
+      "Sid": "SupportedServiceSid4",
+      "Effect": "Allow",
+      "Action": "resource-explorer-2:Search",
+      "Resource": "arn:aws:resource-explorer-2:*"
+    },
+    {
+      "Sid": "SupportedServiceSid5",
+      "Effect": "Allow",
+      "Action": "route53:GetChange",
+      "Resource": "arn:aws:route53:::change/*"
+    },
+    {
+      "Sid": "SupportedServiceSid6",
+      "Effect": "Allow",
+      "Action": [
+        "route53:GetHostedZone",
+        "route53:ListResourceRecordSets"
+      ],
+      "Resource": "arn:aws:route53:::hostedzone/Z05316652223DOCZMXJF2"
+    },
+    {
+      "Sid": "SupportedServiceSid7",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketLogging",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": "arn:aws:s3:::i2509demo-shared-shared-bkt"
     }
   ]
 }
