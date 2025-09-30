@@ -19,9 +19,109 @@
       ]
     },
     {
+      "Sid": "SupportedServiceSid0",
       "Effect": "Allow",
-      "Action": ["*"],
+      "Action": [
+        "cloudtrail:LookupEvents",
+        "ec2:CreateTags",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeNetworkAcls",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "route53:CreateHostedZone",
+        "route53:ListTagsForResource",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCORS",
+        "s3:GetBucketPolicy"
+      ],
       "Resource": "*"
+    },
+    {
+      "Sid": "SupportedServiceSid1",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:CreateInternetGateway",
+        "ec2:DeleteInternetGateway",
+        "ec2:DetachInternetGateway"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:internet-gateway/igw-0a1af5b07fa53b35c"
+    },
+    {
+      "Sid": "SupportedServiceSid2",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateSubnet",
+        "ec2:DeleteSubnet"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:subnet/subnet-0362fc291a085004c"
+    },
+    {
+      "Sid": "SupportedServiceSid3",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AttachInternetGateway",
+        "ec2:CreateSubnet",
+        "ec2:CreateVpc",
+        "ec2:DeleteVpc",
+        "ec2:DescribeVpcAttribute",
+        "ec2:DetachInternetGateway",
+        "ec2:ModifyVpcAttribute"
+      ],
+      "Resource": "arn:aws:ec2:us-east-1:490004637046:vpc/vpc-00e177340d2a6dc9e"
+    },
+    {
+      "Sid": "SupportedServiceSid4",
+      "Effect": "Allow",
+      "Action": "resource-explorer-2:Search",
+      "Resource": "arn:aws:resource-explorer-2:*"
+    },
+    {
+      "Sid": "SupportedServiceSid5",
+      "Effect": "Allow",
+      "Action": "route53:GetChange",
+      "Resource": "arn:aws:route53:::change/*"
+    },
+    {
+      "Sid": "SupportedServiceSid6",
+      "Effect": "Allow",
+      "Action": [
+        "route53:DeleteHostedZone",
+        "route53:GetHostedZone",
+        "route53:ListResourceRecordSets"
+      ],
+      "Resource": "arn:aws:route53:::hostedzone/Z08208371E5W510AGGY0F"
+    },
+    {
+      "Sid": "SupportedServiceSid7",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:DeleteBucket",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketLogging",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketOwnershipControls",
+        "s3:GetBucketPublicAccessBlock",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:GetBucketWebsite",
+        "s3:GetEncryptionConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:PutBucketOwnershipControls",
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketTagging",
+        "s3:PutBucketVersioning",
+        "s3:PutEncryptionConfiguration",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": "arn:aws:s3:::i2509demo-shared-shared-bkt"
     }
   ]
 }
