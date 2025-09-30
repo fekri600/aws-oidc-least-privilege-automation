@@ -6,7 +6,7 @@ on:
       hours:
         description: "Lookback window in hours"
         required: false
-        default: "72"   # was 24
+        default: "24"   
 
 permissions:
   id-token: write
@@ -57,7 +57,7 @@ jobs:
           ROLE_ARN: ${{ env.ROLE_ARN }}
           TRAIL_ARN: ${{ env.TRAIL_ARN }}
           ACCESS_ROLE_ARN: ${{ env.ACCESS_ROLE_ARN }}
-          LOOKBACK_HOURS: ${{ github.event.inputs.hours || '72' }}
+          LOOKBACK_HOURS: ${{ github.event.inputs.hours || '24' }}
         run: |
           python services/query-ct-lack/ci_least_priv.py \
             --principal-arn "$ROLE_ARN" \
@@ -75,7 +75,7 @@ jobs:
           title: "chore: update OIDC role policy from Access Analyzer evidence"
           body: |
             This PR tightens the GitHub OIDC role policy (`permission-policy.json`)
-            based on actions actually used in the last ${{ github.event.inputs.hours || '72' }}h.
+            based on actions actually used in the last ${{ github.event.inputs.hours || '24' }}h.
           add-paths: |
             bootstrap/modules/oidc/policies/permission-policy.json
           commit-message: "chore: update OIDC role policy from Access Analyzer evidence"

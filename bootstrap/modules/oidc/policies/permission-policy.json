@@ -128,7 +128,7 @@
         "s3:PutEncryptionConfiguration",
         "s3:PutLifecycleConfiguration"
       ],
-      "Resource": "arn:aws:s3:::i2509demo-shared-shared-bkt"
+      "Resource": "arn:aws:s3:::*"
     }
   ]
 }
