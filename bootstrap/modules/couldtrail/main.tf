@@ -1,14 +1,20 @@
-# Enable CloudTrail (if you don’t already have one)
+# CloudTrail (single resource; remove any duplicates)
 resource "aws_cloudtrail" "main" {
   name                          = "main-trail"
   s3_bucket_name                = aws_s3_bucket.ct_logs.id
   include_global_service_events = true
   is_multi_region_trail         = true
   enable_log_file_validation    = true
+
+  # Log READ + WRITE management events explicitly (Describe/List/Get, etc.)
+  event_selector {
+    read_write_type           = "All"
+    include_management_events = true
+  }
 }
 
 resource "aws_s3_bucket" "ct_logs" {
-  bucket = "my-cloudtrail-logs-${random_id.suffix.hex}"
+  bucket        = "my-cloudtrail-logs-${random_id.suffix.hex}"
   force_destroy = true
 }
 
@@ -16,27 +22,31 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
+# S3 bucket policy for CloudTrail writes + AA role reads
 resource "aws_s3_bucket_policy" "ct_policy" {
   bucket = aws_s3_bucket.ct_logs.id
   policy = templatefile("${path.module}/cloudtrail-s3-policy.json", {
     bucket_arn = aws_s3_bucket.ct_logs.arn
+    account_id = data.aws_caller_identity.this.account_id
+    aa_role_arn = aws_iam_role.access_analyzer_role.arn
   })
 }
 
-# Enable IAM Access Analyzer at account level
+data "aws_caller_identity" "this" {}
+
+# Access Analyzer (ACCOUNT-level)
 resource "aws_accessanalyzer_analyzer" "account" {
   analyzer_name = "account-analyzer"
   type          = "ACCOUNT"
 }
 
-# IAM role for Access Analyzer to assume when reading CloudTrail logs
+# Role AA assumes to read CloudTrail logs
 resource "aws_iam_role" "access_analyzer_role" {
-  name = "access-analyzer-cloudtrail-role"
-
+  name               = "access-analyzer-cloudtrail-role"
   assume_role_policy = file("${path.module}/access-analyzer-trust-policy.json")
 }
 
-# IAM policy for Access Analyzer role to read CloudTrail logs
+# Inline policy for that role: read our S3 log bucket + Trail metadata
 resource "aws_iam_role_policy" "access_analyzer_policy" {
   name = "aa-read-cloudtrail-inline"
   role = aws_iam_role.access_analyzer_role.id

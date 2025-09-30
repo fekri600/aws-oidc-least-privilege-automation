@@ -17,6 +17,20 @@
       "Condition": {
         "StringEquals": { "s3:x-amz-acl": "bucket-owner-full-control" }
       }
+    },
+    {
+      "Sid": "AllowAAReadLogs",
+      "Effect": "Allow",
+      "Principal": { "AWS": "${aa_role_arn}" },
+      "Action": [ "s3:ListBucket" ],
+      "Resource": "${bucket_arn}"
+    },
+    {
+      "Sid": "AllowAAGetLogObjects",
+      "Effect": "Allow",
+      "Principal": { "AWS": "${aa_role_arn}" },
+      "Action": [ "s3:GetObject" ],
+      "Resource": "${bucket_arn}/*"
     }
   ]
 }
