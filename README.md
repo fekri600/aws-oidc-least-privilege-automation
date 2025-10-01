@@ -445,26 +445,72 @@ cd aws-ci-least-privilege-automation
 
 ### Step 2: Bootstrap AWS Infrastructure
 
+The bootstrap directory contains Terraform code to set up:
+- CloudTrail trail and S3 bucket
+- OIDC provider for GitHub Actions
+- Initial IAM roles and policies
+- Backend S3 bucket for Terraform state
+
+**Use the Makefile to deploy the bootstrap infrastructure:**
+
+```bash
+make apply-bt
+```
+
+This single command will:
+1. Initialize and apply the bootstrap Terraform configuration
+2. Generate the `backend.tf` file for remote state management
+3. Automatically configure all required GitHub Secrets:
+   - `AWS_OIDC_ROLE_ARN` - IAM role for GitHub Actions (pipeline)
+   - `AWS_CLOUDTRAIL_ARN` - CloudTrail trail ARN
+   - `AWS_ACCESS_ANALYZER_ROLE_ARN` - Access Analyzer read role ARN
+   - `CTS_LAKE_EDS_ARN` - CloudTrail Event Data Store ARN (if using CloudTrail Lake)
+
+**Note**: Ensure you have the [GitHub CLI](https://cli.github.com/) installed and authenticated (`gh auth login`) before running `make apply-bt`.
+
+**Manual deployment alternative:**
+
+If you prefer to run Terraform manually:
+
 ```bash
 cd bootstrap
 terraform init
 terraform apply
 
-# Export outputs as GitHub Secrets
-make bootstrap-secrets
+# Manually configure GitHub Secrets (see Step 3)
 ```
-
 ### Step 3: Configure GitHub Secrets
 
-Set the following secrets in your GitHub repository:
+**Note**: If you used `make apply-bt` in Step 2, this step is already complete. These secrets were automatically configured.
 
-| Secret Name | Description |
+**For manual deployment only**, set the following secrets in your GitHub repository (`Settings > Secrets and variables > Actions`):
+
+| Secret Name                      | Description                              |
 |----------------------------------|------------------------------------------|
-| `AWS_OIDC_ROLE_ARN` | IAM role for GitHub Actions (pipeline) |
-| `AWS_CLOUDTRAIL_ARN` | CloudTrail trail ARN |
-| `AWS_ACCESS_ANALYZER_ROLE_ARN` | Access Analyzer read role ARN |
-| `LEAS_PREV_PR` | GitHub PAT for creating PRs |
+| `AWS_OIDC_ROLE_ARN`              | IAM role for GitHub Actions (pipeline)  |
+| `AWS_CLOUDTRAIL_ARN`             | CloudTrail trail ARN                     |
+| `AWS_ACCESS_ANALYZER_ROLE_ARN`   | Access Analyzer read role ARN            |
+| `LEAS_PREV_PR`                   | GitHub PAT for creating PRs              |
 
+**To get the values from Terraform outputs:**
+
+```bash
+cd bootstrap
+
+# Get the values
+terraform output trust_role_github
+terraform output cloudtrail_arn
+terraform output access_analyzer_role_arn
+
+# Set them manually via GitHub UI or CLI
+gh secret set AWS_OIDC_ROLE_ARN --body "$(terraform output -raw trust_role_github)"
+gh secret set AWS_CLOUDTRAIL_ARN --body "$(terraform output -raw cloudtrail_arn)"
+gh secret set AWS_ACCESS_ANALYZER_ROLE_ARN --body "$(terraform output -raw access_analyzer_role_arn)"
+```
+
+**GitHub PAT (`LEAS_PREV_PR`)**:
+- Create a [Personal Access Token](https://github.com/settings/tokens) with `repo` and `workflow` scopes
+- Set it as a secret: `gh secret set LEAS_PREV_PR --body "ghp_your_token_here"`
 ---
 
 ## Usage
