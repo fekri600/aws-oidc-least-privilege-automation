@@ -321,6 +321,9 @@ After the infrastructure is deployed using the wildcard policy (or if infrastruc
 
 ## Architecture
 
+![diagram](diagram.png)
+
+
 ```
 
 GitHub Actions (OIDC)
