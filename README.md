@@ -597,6 +597,82 @@ Review and merge the second Pull Request.
 terraform force-unlock <LOCK_ID>
 ```
 
+### Issue: `Input 'token' not supplied` Error in least-priv-ci.yml
+
+**Error Message**:
+```
+Run peter-evans/create-pull-request@v6
+Error: Input 'token' not supplied. Unable to continue.
+```
+
+**Cause**: The workflow requires a GitHub Personal Access Token (PAT) to create Pull Requests, but the `LEAS_PREV_PR` secret is not configured.
+
+**Solution**: Create a GitHub PAT and add it as a repository secret.
+
+#### Step 1: Create a GitHub Personal Access Token
+
+1. **Go to GitHub Settings**:
+   - Navigate to [GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)](https://github.com/settings/tokens)
+   - Or go to your profile → Settings → Developer settings → Personal access tokens → Tokens (classic)
+
+2. **Generate New Token**:
+   - Click "Generate new token" → "Generate new token (classic)"
+   - Give it a descriptive name like "Least Privilege Automation PR Creation"
+
+3. **Select Scopes** (Required permissions):
+   - ✅ `repo` - Full control of private repositories
+     - ✅ `repo:status` - Access commit status
+     - ✅ `repo_deployment` - Access deployment status
+     - ✅ `public_repo` - Access public repositories
+   - ✅ `workflow` - Update GitHub Action workflows
+
+4. **Set Expiration**:
+   - Choose an appropriate expiration (30 days, 60 days, 90 days, or no expiration)
+   - For production use, consider setting a shorter expiration and rotating regularly
+
+5. **Generate Token**:
+   - Click "Generate token"
+   - **Important**: Copy the token immediately - you won't be able to see it again!
+
+#### Step 2: Add Token as Repository Secret
+
+**Option A: Using GitHub CLI (Recommended)**
+```bash
+# Set the secret (replace YOUR_TOKEN_HERE with your actual token)
+gh secret set LEAS_PREV_PR --body "ghp_your_token_here"
+```
+
+**Option B: Using GitHub Web Interface**
+1. Go to your repository on GitHub
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Click **"New repository secret"**
+4. **Name**: `LEAS_PREV_PR`
+5. **Secret**: Paste your GitHub PAT
+6. Click **"Add secret"**
+
+#### Step 3: Verify the Setup
+
+After adding the secret, you can verify it exists:
+```bash
+# List all secrets (names only, not values)
+gh secret list
+```
+
+The `LEAS_PREV_PR` secret should appear in the list.
+
+#### Step 4: Test the Workflow
+
+Now you can run the least-privilege workflow without the token error:
+```bash
+gh workflow run least-priv-ci.yml -f hours=24
+```
+
+**Security Notes**:
+- Never commit GitHub tokens to your repository
+- Use repository secrets to store sensitive values
+- Consider using GitHub Apps instead of PATs for better security in production environments
+- Regularly rotate your tokens (especially if using long expiration periods)
+
 ---
 
 ## Contributing
