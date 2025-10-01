@@ -9,8 +9,8 @@
 [![Makefile](https://img.shields.io/badge/Makefile-GNU%20Make-A42E2B?logo=gnu)](https://www.gnu.org/software/make/)
 [![Bash](https://img.shields.io/badge/Bash-5.0+-4EAA25?logo=gnubash)](https://www.gnu.org/software/bash/)
 [![JSON](https://img.shields.io/badge/JSON-IAM%20Policies-000000?logo=json)](https://www.json.org/)
+[![Pipeline Status](https://img.shields.io/badge/Pipeline-Success-brightgreen?logo=githubactions)](https://github.com/fekri600/aws-oidc-least-privilege-automation/actions)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
 
 ---
 
