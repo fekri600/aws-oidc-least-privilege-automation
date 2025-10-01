@@ -5,7 +5,12 @@
 [![Terraform](https://img.shields.io/badge/Terraform-1.12.2-623CE4?logo=terraform)](https://www.terraform.io/)
 [![AWS](https://img.shields.io/badge/AWS-CloudTrail%20%7C%20Access%20Analyzer-232F3E?logo=amazon-aws)](https://aws.amazon.com/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python)](https://www.python.org/)
+[![GitHub CLI](https://img.shields.io/badge/GitHub%20CLI-2.0+-181717?logo=github)](https://cli.github.com/)
+[![Makefile](https://img.shields.io/badge/Makefile-GNU%20Make-A42E2B?logo=gnu)](https://www.gnu.org/software/make/)
+[![Bash](https://img.shields.io/badge/Bash-5.0+-4EAA25?logo=gnubash)](https://www.gnu.org/software/bash/)
+[![JSON](https://img.shields.io/badge/JSON-IAM%20Policies-000000?logo=json)](https://www.json.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 
 ---
 
