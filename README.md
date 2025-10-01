@@ -620,11 +620,11 @@ Error: Input 'token' not supplied. Unable to continue.
    - Give it a descriptive name like "Least Privilege Automation PR Creation"
 
 3. **Select Scopes** (Required permissions):
-   - ✅ `repo` - Full control of private repositories
-     - ✅ `repo:status` - Access commit status
-     - ✅ `repo_deployment` - Access deployment status
-     - ✅ `public_repo` - Access public repositories
-   - ✅ `workflow` - Update GitHub Action workflows
+   - `repo` - Full control of private repositories
+     - `repo:status` - Access commit status
+     - `repo_deployment` - Access deployment status
+     - `public_repo` - Access public repositories
+   - `workflow` - Update GitHub Action workflows
 
 4. **Set Expiration**:
    - Choose an appropriate expiration (30 days, 60 days, 90 days, or no expiration)
