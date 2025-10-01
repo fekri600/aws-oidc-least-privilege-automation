@@ -34,13 +34,44 @@ This project provides an **automated, self-healing approach** to managing IAM pe
 
 Instead, this solution leverages **AWS CloudTrail** and **AWS IAM Access Analyzer** to automatically generate IAM policies tailored to the **exact AWS actions and resources** used by your GitHub Actions workflows.
 
+### The Manual Least-Privilege Headache
+
+The traditional method of achieving least-privilege permissions is a **significant operational burden** that most teams abandon in favor of overly permissive policies. Here's why:
+
+**The Painful Manual Process:**
+
+1. Start with a minimal IAM policy (best guess)
+2. Run the CI/CD pipeline
+3. Pipeline fails with `AccessDenied` error
+4. Check runtime logs to identify the **single missing action**
+5. Manually update the IAM policy with that one action
+6. Re-run the entire pipeline
+7. **Repeat steps 3-6 for every missing permission**
+
+This tedious, iterative cycle scales **directly with the number of resources and required actions** in your infrastructure. For a typical deployment with 20-30 resources across multiple AWS services, this can mean:
+
+- **10-20+ pipeline runs** to identify all required permissions
+- **Hours of manual debugging** and policy editing
+- **Frustration and wasted developer time**
+- **High probability of giving up** and using `Resource: "*"` instead
+
+### This Project Eliminates That Pain
+
+Instead of the manual iteration nightmare, this tool:
+
+- Captures **all required actions in a single run** (deploy + destroy)
+- Automatically generates the **complete least-privilege policy**
+- Eliminates the trial-and-error debugging cycle
+- Reduces policy creation from **hours to minutes**
+
+**Result**: You get strict least-privilege security **without the operational headache**.
+
 ### Target Audience
 
 - **DevOps Engineers** managing CI/CD pipelines
 - **Cloud Architects** designing secure AWS infrastructures
 - **Security Engineers** enforcing least-privilege access
 - **Developers** deploying infrastructure via GitHub Actions
-
 ---
 
 ## The Problem
